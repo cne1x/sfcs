@@ -7,6 +7,7 @@ trait Dimension[T] {
   def isMinIncluded: Boolean
   def max: T
   def isMaxIncluded: Boolean
+  def contains(value: T): Boolean
   override def toString: String =
     (if (isMinIncluded) "[" else "(") +
       min.toString + ", " + max.toString +
@@ -17,6 +18,12 @@ case class RealDimension(min: Double, isMinIncluded: Boolean, max: Double, isMax
   require(min <= max, s"Minimum ($min) must not be greater than maximum ($max)")
 
   val span = max - min
+
+  def contains(value: Double): Boolean = {
+    val satisfiesMin =(value > min) || (value == min && isMinIncluded)
+    val satisfiesMax =(value < max) || (value == max && isMaxIncluded)
+    satisfiesMin && satisfiesMax
+  }
 }
 
 trait Partitioner[T <: Dimension[_]] {
