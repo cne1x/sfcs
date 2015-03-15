@@ -254,5 +254,7 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
 
     p
   }
+
+  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }
 

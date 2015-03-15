@@ -28,6 +28,74 @@ object SpaceFillingCurve {
     def ++(a: OrdinalNumber) = OrdinalVector((x.toSeq ++ Seq(a)):_*)
   }
 
+  // assume that "min" and "max" will always be inclusive, since they're discrete
+  case class OrdinalPair(min: OrdinalNumber, max: OrdinalNumber)
+
+  // roughly analogous to "query" for the time being
+  case class OrdinalRectangle(pairs: OrdinalPair*) {
+    def size: Int = pairs.size
+    def toSeq: Seq[OrdinalPair] = pairs.toSeq
+  }
+
+  def consolidatedRangeIterator(ranges: Iterator[OrdinalPair]) = new Iterator[OrdinalPair] {
+    var nextSeed: Option[OrdinalPair] = None
+    var top = findTop()
+    def findTop(): Option[OrdinalPair] = {
+      if (ranges.hasNext) {
+        var current = nextSeed
+        nextSeed = Option(ranges.next())
+        if (current.isEmpty) {
+          current = nextSeed
+          nextSeed = if (ranges.hasNext) Option(ranges.next()) else None
+        }
+        while (nextSeed.isDefined && (current.get.max + 1L) == nextSeed.get.min) {
+          current = Option(OrdinalPair(current.get.min, nextSeed.get.max))
+          nextSeed = if (ranges.hasNext) Option(ranges.next()) else None
+        }
+        current
+      } else {
+        // there were no more items, so use whatever you pre-fetched
+        val result = nextSeed
+        nextSeed = None
+        result
+      }
+    }
+    def hasNext: Boolean = top.isDefined
+    def next(): OrdinalPair = {
+      val result = top.getOrElse(throw new Exception("Invalid top"))
+      top = findTop()
+      result
+    }
+  }
+  
+  // returns an iterator over all combinations of ordinal numbers
+  def combinationsIterator(counts: OrdinalVector): Iterator[OrdinalVector] = {
+    val bounds = counts.toSeq.map(c => OrdinalPair(0, c - 1))
+    combinationsIterator(bounds)
+  }
+
+  def combinationsIterator(bounds: Seq[OrdinalPair]) = new Iterator[OrdinalVector] {
+    val counts = bounds.map(pair => pair.max - pair.min + 1)
+    var n = counts.size
+    val idx = bounds.map(pair => pair.min).foldLeft(collection.mutable.MutableList[OrdinalNumber]())((acc, b) => {
+      acc += b
+    })
+    var _hasNext = (0 until n).map(i => 0 < (counts(i) - 1)).find(_ == true).getOrElse(false)
+    def hasNext: Boolean = _hasNext
+    def next(): OrdinalVector = {
+      val result = (0 until n).map(j => idx(j)).toOrdinalVector
+      var i = n - 1
+      idx(i) = idx(i) + 1
+      while (i >= 0 && idx(i) > bounds(i).max) {
+        idx(i) = bounds(i).min
+        i = i - 1
+        if (i >= 0) idx(i) = idx(i) + 1
+      }
+      _hasNext = i >= 0
+      result
+    }
+  }
+
   implicit class long2ordvec(x: OrdinalNumber) {
     def +(v: OrdinalVector) = OrdinalVector((Seq(x) ++ v.x.toSeq):_*)
   }
@@ -87,6 +155,8 @@ object SpaceFillingCurve {
     def index(point: OrdinalVector): OrdinalNumber
 
     def inverseIndex(ordinal: OrdinalNumber): OrdinalVector
+
+    def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair]
   }
 }
 

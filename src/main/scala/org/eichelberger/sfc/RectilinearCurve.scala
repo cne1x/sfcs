@@ -37,4 +37,22 @@ case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve
     }
     point.reverse
   }
+
+  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = {
+    // naive:  assume none of the dimensions is full-range
+    // (if they are, the range-consolidation should fix it, albeit more slowly
+    // than if we handled it up front)
+
+    // only consider combinations preceding the last (least significant) dimension
+    val bounds = query.toSeq.dropRight(1)
+    val itr = combinationsIterator(bounds)
+    val ranges = itr.map(vec => {
+      val minIdx = index(vec ++ query.toSeq.last.min)
+      val maxIdx = index(vec ++ query.toSeq.last.max)
+      OrdinalPair(minIdx, maxIdx)
+    })
+
+    // final clean-up
+    consolidatedRangeIterator(ranges).toSeq
+  }
 }

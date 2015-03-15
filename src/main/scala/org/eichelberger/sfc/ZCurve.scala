@@ -48,4 +48,6 @@ case class ZCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with 
     }
     vector
   }
+
+  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }
