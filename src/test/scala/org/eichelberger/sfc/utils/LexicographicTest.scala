@@ -1,10 +1,11 @@
-package org.eichelberger.sfc
+package org.eichelberger.sfc.utils
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, ords2ordvec}
+import org.eichelberger.sfc.{Real1DPartitioner, RealDimension, ZCurve}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
-import SpaceFillingCurve._
 
 @RunWith(classOf[JUnitRunner])
 class LexicographicTest extends Specification with LazyLogging {

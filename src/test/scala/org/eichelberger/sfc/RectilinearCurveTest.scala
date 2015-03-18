@@ -23,7 +23,7 @@ class RectilinearCurveTest extends Specification with GenericCurveValidation wit
     "identify sub-ranges correctly" >> {
       val sfc = createCurve(3, 3)
       val query = OrdinalRectangle(OrdinalPair(1, 2), OrdinalPair(1, 3))
-      val ranges = sfc.getPrefixesCoveringQuery(query).toList
+      val ranges = sfc.getRangesCoveringQuery(query).toList
 
       for (i <- 0 until ranges.size) {
         println(s"[rectilinear ranges:  query $query] range $i = ${ranges(i)}")

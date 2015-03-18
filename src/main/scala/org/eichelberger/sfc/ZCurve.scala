@@ -1,7 +1,8 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.Lexicographics._
+import org.eichelberger.sfc.utils.Lexicographics
+import Lexicographics._
 import org.eichelberger.sfc.SpaceFillingCurve._
 
 case class ZCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
@@ -49,5 +50,5 @@ case class ZCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with 
     vector
   }
 
-  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
+  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }

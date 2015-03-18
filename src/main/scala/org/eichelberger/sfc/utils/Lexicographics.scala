@@ -1,4 +1,4 @@
-package org.eichelberger.sfc
+package org.eichelberger.sfc.utils
 
 import org.eichelberger.sfc.SpaceFillingCurve._
 

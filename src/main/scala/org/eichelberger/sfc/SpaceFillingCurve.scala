@@ -1,6 +1,7 @@
 package org.eichelberger.sfc
 
-import org.eichelberger.sfc.Lexicographics.Lexicographic
+import org.eichelberger.sfc.utils.Lexicographics
+import Lexicographics.Lexicographic
 
 object SpaceFillingCurve {
   type OrdinalNumber = Long
@@ -26,6 +27,7 @@ object SpaceFillingCurve {
     override def toString: String = x.map(_.toString).mkString(", ")
     def reverse: OrdinalVector = OrdinalVector(x.toSeq.reverse:_*)
     def ++(a: OrdinalNumber) = OrdinalVector((x.toSeq ++ Seq(a)):_*)
+    def +(v: OrdinalVector) = OrdinalVector((x.toSeq ++ v.toSeq):_*)
   }
 
   // assume that "min" and "max" will always be inclusive, since they're discrete
@@ -80,7 +82,7 @@ object SpaceFillingCurve {
     val idx = bounds.map(pair => pair.min).foldLeft(collection.mutable.MutableList[OrdinalNumber]())((acc, b) => {
       acc += b
     })
-    var _hasNext = (0 until n).map(i => 0 < (counts(i) - 1)).find(_ == true).getOrElse(false)
+    var _hasNext = (0 until n).map(i => 0 <= (counts(i) - 1)).find(_ == true).getOrElse(false)
     def hasNext: Boolean = _hasNext
     def next(): OrdinalVector = {
       val result = (0 until n).map(j => idx(j)).toOrdinalVector
@@ -130,6 +132,60 @@ object SpaceFillingCurve {
   def asBinaryString(x: Long, len: Int): String =
     x.toBinaryString.reverse.padTo(len, "0").mkString.reverse
 
+  def lsbsInCommon(a: OrdinalNumber, b: OrdinalNumber):  OrdinalNumber = {
+    var i = 0L
+    val x = a ^ b
+    while (i < 64) {  //@TODO should not be constant here
+      if ((x & (1L << i)) == 1) return i
+      i = i + 1
+    }
+    i
+  }
+
+  def msbsInCommon(a: OrdinalNumber, b: OrdinalNumber):  OrdinalNumber = {
+    var i = 63L  //@TODO should not be constant here
+    val x = a ^ b
+    while (i > 0) {
+    val bit = 1L << i
+      if ((x & (1L << i)) == 1) return i
+      i = i - 1
+    }
+    i
+  }
+
+  def binDelta(x: OrdinalNumber, maxBits: OrdinalNumber, bits: OrdinalNumber): OrdinalNumber = {
+    val mask = (1L << bits) - 1L
+    mask - (x & mask)
+  }
+
+  def bitCoverages(coords: OrdinalPair, maxBits: OrdinalNumber): Seq[OrdinalPair] = {
+    if (coords.min > coords.max) return Seq[OrdinalPair]()
+    if (coords.max == coords.min) return Seq(OrdinalPair(coords.min, 1))
+    if ((coords.min & 1L) == 1L) return Seq(OrdinalPair(coords.min, 1)) ++
+      bitCoverages(OrdinalPair(coords.min + 1L, coords.max), maxBits)
+
+    val span = coords.max - coords.min
+
+    // find the largest group
+    var i = maxBits
+    var b = binDelta(coords.min, maxBits, i)
+    var unfound = b > span
+    while (i >= 1 && unfound) {
+      i = i - 1
+      b = binDelta(coords.min, maxBits, i)
+      unfound = b > span
+    }
+
+    val lowEnd = onBitsIn(b + 1L) match {
+      case 0 => throw new Exception(s"Unexpected case for b $b in bitCoverages($coords, $maxBits)")
+      case 1 => Seq(OrdinalPair(coords.min, b + 1L))  // entire block
+      case _ => bitCoverages(OrdinalPair(coords.min, coords.min + b), maxBits)
+    }
+    val highEnd = bitCoverages(OrdinalPair(coords.min + b + 1, coords.max), maxBits)
+
+    lowEnd ++ highEnd
+  }
+
   trait SpaceFillingCurve {
     // the number of bits consumed by each of the constituent dimensions
     def precisions: OrdinalVector
@@ -156,7 +212,7 @@ object SpaceFillingCurve {
 
     def inverseIndex(ordinal: OrdinalNumber): OrdinalVector
 
-    def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair]
+    def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair]
   }
 }
 

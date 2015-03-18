@@ -8,6 +8,8 @@ import org.specs2.mutable.Specification
 
 @RunWith(classOf[JUnitRunner])
 class SpaceFillingCurveTest extends Specification with LazyLogging {
+  sequential
+
   "static functions in SFC" should {
     "iterate over counted combinations correctly" >> {
       val bounds = OrdinalVector(1, 2, 3)
@@ -49,6 +51,63 @@ class SpaceFillingCurveTest extends Specification with LazyLogging {
         println(s"[consolidated range iteration] i $i:  ${consolidated(i)}")
       }
       consolidated.size must equalTo(5)
+    }
+  }
+
+  "binary deltas" >> {
+    binDelta(6, 4, 1) must equalTo(1)
+    binDelta(6, 4, 2) must equalTo(1)
+    binDelta(6, 4, 3) must equalTo(1)
+    binDelta(6, 4, 4) must equalTo(9)
+    binDelta(12, 4, 1) must equalTo(1)
+    binDelta(12, 4, 2) must equalTo(3)
+    binDelta(12, 4, 3) must equalTo(3)
+    binDelta(12, 4, 4) must equalTo(3)
+  }
+
+  "bit coverages" >> {
+    def testCoverages(range: OrdinalPair, precision: OrdinalNumber, expected: Seq[OrdinalPair]): Boolean = {
+      val result = bitCoverages(range, precision)
+      println(s"[bit coverage] range $range, precision $precision...\n${result.mkString("  ","\n  ","")}")
+      result must equalTo(expected)
+    }
+
+    testCoverages(OrdinalPair(6, 12), 4, Seq(OrdinalPair(6, 2), OrdinalPair(8, 4), OrdinalPair(12, 1))) must beTrue
+    testCoverages(OrdinalPair(1, 5), 4, Seq(OrdinalPair(1, 1), OrdinalPair(2, 2), OrdinalPair(4, 2))) must beTrue
+    testCoverages(OrdinalPair(0, 65535), 16, Seq(OrdinalPair(0, 65536))) must beTrue
+  }
+
+  "cross-curve comparisons" should {
+    "be possible" >> {
+      val n = 2
+      val z = new ZCurve(OrdinalVector(n, n))
+      val c = CompactHilbertCurve(OrdinalVector(n, n))
+      val r = RectilinearCurve(OrdinalVector(n, n))
+
+      def d0(sfc: SpaceFillingCurve, name: String): Double = {
+        val data = for (i <- 0 to sfc.size.toInt - 2) yield {
+          val j = i + 1
+          val pi = sfc.inverseIndex(i)
+          val pix = pi(0)
+          val piy = pi(1)
+          val pj = sfc.inverseIndex(j)
+          val pjx = pj(0)
+          val pjy = pj(1)
+          val ds = Math.hypot(pix - pjx, piy - pjy)
+          val di = Math.abs(i - j)
+          ds / di
+        }
+        val mean = data.sum / data.size.toDouble
+        println(s"[mean dSpace/dIndex] $name:  ${mean.formatted("%1.3f")}")
+        mean
+      }
+
+      val idr = d0(r, "R")
+      val idz = d0(z, "Z")
+      val idc = d0(c, "C")
+
+      idc must beLessThan(idz)
+      idz must beLessThan(idr)
     }
   }
 }

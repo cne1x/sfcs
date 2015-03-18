@@ -1,7 +1,8 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.Lexicographics.Lexicographic
+import org.eichelberger.sfc.utils.Lexicographics
+import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
 
 /**
@@ -38,7 +39,7 @@ case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve
     point.reverse
   }
 
-  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = {
+  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = {
     // naive:  assume none of the dimensions is full-range
     // (if they are, the range-consolidation should fix it, albeit more slowly
     // than if we handled it up front)

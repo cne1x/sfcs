@@ -1,6 +1,7 @@
 package org.eichelberger.sfc.examples
 
-import org.eichelberger.sfc.Lexicographics._
+import org.eichelberger.sfc.utils.Lexicographics
+import Lexicographics._
 import org.eichelberger.sfc.SpaceFillingCurve._
 import org.eichelberger.sfc.{Real1DPartitioner, RealDimension, ZCurve}
 

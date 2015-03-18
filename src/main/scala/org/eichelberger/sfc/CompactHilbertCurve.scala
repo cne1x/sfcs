@@ -1,7 +1,8 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.Lexicographics.Lexicographic
+import org.eichelberger.sfc.utils.Lexicographics
+import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
 
 // algorithm transcribed from pseudo-code contained in
@@ -255,6 +256,6 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
     p
   }
 
-  def getPrefixesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
+  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }
 
