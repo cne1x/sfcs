@@ -5,7 +5,7 @@ import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics._
 import org.eichelberger.sfc.SpaceFillingCurve._
 
-case class ZCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
+case class ZCurve(val precisions: OrdinalVector) extends QuadTreeCurve with Lexicographic with LazyLogging {
   // validate precisions
   require(precisions.size > 1, s"Z-curves are meant to operate on two or more dimensions (${precisions.size})")
   for (i <- 1 to precisions.size - 1; prev = precisions(i - 1); curr = precisions(i)) {
@@ -49,6 +49,4 @@ case class ZCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with 
     }
     vector
   }
-
-  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }

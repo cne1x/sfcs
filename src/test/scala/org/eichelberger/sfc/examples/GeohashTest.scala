@@ -1,12 +1,14 @@
 package org.eichelberger.sfc.examples
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.eichelberger.sfc.SpaceFillingCurve._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
 
 @RunWith(classOf[JUnitRunner])
 class GeohashTest  extends Specification with LazyLogging {
+  val bboxCville = (-78.5238, 38.0097, -78.4464, 38.0705)
   val xCville = -78.488407
   val yCville = 38.038668
 
@@ -38,6 +40,23 @@ class GeohashTest  extends Specification with LazyLogging {
       }
 
       // degenerate test outcome
+      1 must equalTo(1)
+    }
+
+    "generate valid selection indexes" >> {
+      val lonIdxRange = OrdinalPair(
+        geohash.longitude.index(bboxCville._1),
+        geohash.longitude.index(bboxCville._3)
+      )
+      val latIdxRange = OrdinalPair(
+        geohash.latitude.index(bboxCville._2),
+        geohash.latitude.index(bboxCville._4)
+      )
+      val query = Query(Seq(OrdinalRanges(lonIdxRange), OrdinalRanges(latIdxRange)))
+      val ranges = geohash.getRangesCoveringQuery(query)
+
+      println(s"[geohash query ranges] lons $lonIdxRange, lats $latIdxRange, ranges ${ranges.size}")
+
       1 must equalTo(1)
     }
   }

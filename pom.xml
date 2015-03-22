@@ -5,10 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.eichelberger</groupId>
-    <artifactId>compact-hilbert</artifactId>
+    <artifactId>sfseize</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Compact Hilbert</name>
+    <name>SFSeize</name>
 
     <properties>
         <scala.series>2.11</scala.series>

@@ -19,5 +19,21 @@ class ZCurveTest extends Specification with GenericCurveValidation with LazyLogg
     "satisfy the ordering constraints" >> {
       timeTestOrderings() must beTrue
     }
+
+    "identify ranges from coordinate queries" >> {
+      val sfc = ZCurve(OrdinalVector(4, 4))
+      val query = Query(Seq(
+        OrdinalRanges(OrdinalPair(1, 5)),
+        OrdinalRanges(OrdinalPair(6, 12))
+      ))
+      val ranges = sfc.getRangesCoveringQuery(query).toList
+      ranges.zipWithIndex.foreach {
+        case (range, i) =>
+          println(s"[z-curve query ranges $query] $i:  $range")
+      }
+
+      ranges.size must equalTo(11)
+      ranges.map(_.size).sum must equalTo(35L)
+    }
   }
 }

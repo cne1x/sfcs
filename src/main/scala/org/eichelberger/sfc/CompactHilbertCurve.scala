@@ -50,7 +50,7 @@ object CompactHilbertCurve {
   case class GrayCodeRankInverse(i: Long, g: Long)
 }
 
-case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
+case class CompactHilbertCurve(precisions: OrdinalVector) extends QuadTreeCurve with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.CompactHilbertCurve._
 
   // for any turn through (en|de)coding, no more than n bits can be valid
@@ -255,7 +255,5 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
 
     p
   }
-
-  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = ???
 }
 

@@ -33,6 +33,21 @@ class SpaceFillingCurveTest extends Specification with LazyLogging {
       n must equalTo(6)
     }
 
+    "iterate over range-collection combinations correctly" >> {
+      val ranges = Seq(
+        OrdinalRanges(OrdinalPair(1, 1)),
+        OrdinalRanges(OrdinalPair(2, 3)),
+        OrdinalRanges(OrdinalPair(4, 5), OrdinalPair(7, 7))
+      )
+      val itr = rangesCombinationsIterator(ranges)
+      var n = 0
+      while (itr.hasNext && n < 10) {
+        println(s"[range-combinations iterator] n $n:  ${itr.next()}")
+        n = n + 1
+      }
+      n must equalTo(6)
+    }
+
     "consolidated ranges iteratively" >> {
       val ranges = Seq(
         OrdinalPair(3, 17),

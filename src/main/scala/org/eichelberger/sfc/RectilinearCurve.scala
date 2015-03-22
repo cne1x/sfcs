@@ -39,21 +39,28 @@ case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve
     point.reverse
   }
 
-  def getRangesCoveringQuery(query: OrdinalRectangle): Seq[OrdinalPair] = {
+  def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
     // naive:  assume none of the dimensions is full-range
     // (if they are, the range-consolidation should fix it, albeit more slowly
     // than if we handled it up front)
 
+    val allRangeSets: Seq[OrdinalRanges] = query.toSeq
+    val lastRangeSet: OrdinalRanges = allRangeSets.last
+    val prefinalRangeSets: Seq[OrdinalRanges] =
+      if (allRangeSets.size > 1) allRangeSets.dropRight(1)
+      else Seq()
+
     // only consider combinations preceding the last (least significant) dimension
-    val bounds = query.toSeq.dropRight(1)
-    val itr = combinationsIterator(bounds)
-    val ranges = itr.map(vec => {
-      val minIdx = index(vec ++ query.toSeq.last.min)
-      val maxIdx = index(vec ++ query.toSeq.last.max)
-      OrdinalPair(minIdx, maxIdx)
+    val itr = rangesCombinationsIterator(prefinalRangeSets)
+    val ranges = itr.flatMap(vec => {
+      lastRangeSet.toSeq.map(r => {
+        val minIdx = index(vec ++ r.min)
+        val maxIdx = index(vec ++ r.max)
+        OrdinalPair(minIdx, maxIdx)
+      })
     })
 
     // final clean-up
-    consolidatedRangeIterator(ranges).toSeq
+    consolidatedRangeIterator(ranges)
   }
 }
