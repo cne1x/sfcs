@@ -20,7 +20,7 @@ components of the lexicographic expression of date-time.  (Full
 disclosure:  I am a contributor to the [GeoMesa](http://github.com/locationtech/geomesa) project.)
 
 Rather than weld the specifics of dimensionality to the curve, though, this library
-seeks to enforce a different separation of concerns:  <code>Partitioners</code> are
+seeks to enforce a different separation of concerns:  A <code>Dimension</code> is
 responsible for mapping an input value in user-space to the discrete bucket to which
 it belongs; the <code>SpaceFillingCurve</code> implementations accept these bucket
 indicators -- ordinal numbers -- and combine them into a new ordinal number that
@@ -29,7 +29,7 @@ the higher-dimensional space.
 
 For example, a traditional Geohash works directly on longitude and latitude
 values to compute the SFC's index value.  In this library, in contrast, a
-partitioner is responsible for resolving the latitude to a range-bucket,
+dimension is responsible for resolving the latitude to a range-bucket,
 resolving the longitude to a range-bucket, and then passing those two ordinal
 numbers to the <code>ZCurve</code> to get a single index value back.
 
@@ -96,17 +96,49 @@ the way back through all of the partitions that participated without any loss
 of data.  New dimensions stack vertically, in that they are enclose the old index
 in a new index function, expediting retrieval.
 
-*This* is why the <code>Partitioner</code> is separate from the <code>SpaceFillingCurve</code>.
+*This* is why the <code>Dimension</code> is separate from the <code>SpaceFillingCurve</code>.
 The curves should not care about dimensions; they should operate on ordinal
 values.  The partitioners should worry about dimensions, but they should only
 do so when it makes sense.
 
-Frankly, I wouldn't believe this without test numbers validating this claim.
+#### Numbers contrasting various curve stackings
 
-So that becomes the main goal of this project:  Provide enough code, and enough
-tests, so that we can sensibly evaluate various ways to grow a space-filling
-curve through multiple indexed dimensions, and determine what combinations
-make the most sense for our own applications.
+Here are some preliminary numbers for fun:
+
+| curve | num. ranges | query time (sec) |
+|-------|-------------|------------------|
+|R(R(C(X,Y),Z),T)|3489.76|0.541|
+|C(C(X,Y),C(Z,T))|1265.46|7.308|
+|R(C(X,Y),C(Z,T))|1777.69|0.268|
+|Z(C(X,Y),C(Z,T))|2108.99|1.129|
+|C(X,Y,Z,T)|1358.74|5.397|
+|R(X,Y,Z,T)|3489.76|0.512|
+|Z(X,Y,Z,T)|3595.50|1.156|
+
+Here, "C", "Z", and "R" stand for curves (compact hilbert, Z-order, and rectilinear)
+when used as a function name, and "X", "Y", "Z", and "T" are dimensions (longitude,
+latitude, altitude, and date-time).
+
+These tests were run using 11 bits for each of the dimensions, for a total of 44 bits
+of data for each of the composite variants.  There was a battery of 100 test queries
+that was applied to each of these curves.  Across all 100 test queries, all curves
+agreed in identifying an average of 6,551.54 cells per range-set.
+
+The general observations to make are these:
+
+1.  For query times:  R < Z < C.  This is intuitive, in that the response
+    time is in inverse proportion to the amount of computation being done.
+1.  For the number of contiguous ranges returned:  C < Z < R.  This is a
+    direct result of the locality within each of these curves.
+
+It should be no surprise that these two trends work against each other,
+although it is interesting to note some of the differences that arise in the
+few compositions selected for these tests.
+
+NB:  The query-range planner is shared between the Z-order and Hilbert curves, but
+is much faster for the Z-order curve than it is for the Hilbert curve, primarily
+because the current implementation of Hilbert could stand some tweaking, being
+largely a first-draft translation of the algorithms described in the Hamilton papers.
 
 ## Curves included in this library
 
@@ -122,23 +154,6 @@ These are the space-filling curves that have already been encoded:
 1.  compact-hilbert:  Based on a "U"-shape path that recurses (while rotating, flipping), a
     Hilbert curve tends to have fewer, shorter discontinuities in the index-space than the z-order
     curve.  The "compact" refers to the fact that not all dimensions need share the same precision.
-
-## PARTS THAT ARE STILL MISSING!!!
-
-So far, there are three space-filling curves that can index, inverse-index, 
-and have access to lexicographic encoding/decoding.  Fine.
-
-The elephant in the room is range planning.  That is, given a query (hyper-?) 
-rectangle, return the list of index ranges that overlap that rectangle.
-Without this, the entire purpose of using a space-filling curve for efficient
-data storage/retrieval is sunk.
-
-Is this where we say, "Coming soon!"  No, really:  We've already done this
-(reasonably well) for Z-curves in the GeoMesa library, and will be applying
-some of the better lessons we've learned to the more interesting problem of
-how to make this available as an abstract service across the various curves.
-
-Long story short:  SF Seize!
 
 ## Other resources
 
