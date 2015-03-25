@@ -5,7 +5,13 @@ import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics._
 import org.eichelberger.sfc.SpaceFillingCurve._
 
+object ZCurve {
+  def apply(x: OrdinalNumber*): ZCurve = new ZCurve(OrdinalVector(x: _*))
+}
+
 case class ZCurve(val precisions: OrdinalVector) extends QuadTreeCurve with Lexicographic with LazyLogging {
+  import org.eichelberger.sfc.ZCurve._
+
   // validate precisions
   require(precisions.size > 1, s"Z-curves are meant to operate on two or more dimensions (${precisions.size})")
   for (i <- 1 to precisions.size - 1; prev = precisions(i - 1); curr = precisions(i)) {

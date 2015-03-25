@@ -1,13 +1,14 @@
 package org.eichelberger.sfc.examples
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.eichelberger.sfc.GenericTesting
 import org.eichelberger.sfc.SpaceFillingCurve._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
 
 @RunWith(classOf[JUnitRunner])
-class GeohashTest  extends Specification with LazyLogging {
+class GeohashTest extends Specification with LazyLogging {
   val bboxCville = (-78.5238, 38.0097, -78.4464, 38.0705)
   val xCville = -78.488407
   val yCville = 38.038668
@@ -43,19 +44,36 @@ class GeohashTest  extends Specification with LazyLogging {
       1 must equalTo(1)
     }
 
-    "generate valid selection indexes" >> {
+    def getCvilleRanges(curve: Geohash): (OrdinalPair, OrdinalPair, Iterator[OrdinalPair]) = {
       val lonIdxRange = OrdinalPair(
-        geohash.longitude.index(bboxCville._1),
-        geohash.longitude.index(bboxCville._3)
+        curve.longitude.index(bboxCville._1),
+        curve.longitude.index(bboxCville._3)
       )
       val latIdxRange = OrdinalPair(
-        geohash.latitude.index(bboxCville._2),
-        geohash.latitude.index(bboxCville._4)
+        curve.latitude.index(bboxCville._2),
+        curve.latitude.index(bboxCville._4)
       )
       val query = Query(Seq(OrdinalRanges(lonIdxRange), OrdinalRanges(latIdxRange)))
-      val ranges = geohash.getRangesCoveringQuery(query)
+      (lonIdxRange, latIdxRange, curve.getRangesCoveringQuery(query))
+    }
+    
+    "generate valid selection indexes" >> {
+      val (_, _, ranges) = getCvilleRanges(geohash)
 
-      println(s"[geohash query ranges] lons $lonIdxRange, lats $latIdxRange, ranges ${ranges.size}")
+      ranges.size must equalTo(90)
+    }
+    
+    "report range efficiency" >> {
+      def atPrecision(xBits: OrdinalNumber, yBits: OrdinalNumber): (Long, Long) = {
+        val curve = new Geohash(xBits + yBits)
+        val (lonRange, latRange, ranges) = getCvilleRanges(curve)
+        (lonRange.size * latRange.size, ranges.size.toLong)
+      }
+
+      for (dimPrec <- 10 to 25) {
+        val ((numCells, numRanges), ms) = GenericTesting.time{ () => atPrecision(dimPrec, dimPrec - 1) }
+        println(s"[ranges across scales, Charlottesville] precision (${dimPrec}, ${dimPrec - 1}) -> $numCells / $numRanges = ${numCells / numRanges} in ${ms} milliseconds")
+      }
 
       1 must equalTo(1)
     }

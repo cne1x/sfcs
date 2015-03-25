@@ -2,7 +2,8 @@ package org.eichelberger.sfc.utils
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, ords2ordvec}
-import org.eichelberger.sfc.{Real1DPartitioner, RealDimension, ZCurve}
+import org.eichelberger.sfc.{DefaultDimensions, ZCurve}
+import org.eichelberger.sfc.Dimensions._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
@@ -16,8 +17,8 @@ class LexicographicTest extends Specification with LazyLogging {
 
     val sfc = ZCurve(precisions)
 
-    val Longitude = Real1DPartitioner(RealDimension(-180.0, true, 180.0, true), 1L << 18L)
-    val Latitude = Real1DPartitioner(RealDimension(-90.0, true, 90.0, true), 1L << 17L)
+    val Longitude = DefaultDimensions.createLongitude(18L)
+    val Latitude = DefaultDimensions.createLatitude(17L)
 
     "work for a known point" >> {
       val x = -78.488407
@@ -50,10 +51,6 @@ class LexicographicTest extends Specification with LazyLogging {
         val sx = x.formatted("%8.3f")
         val sy = y.formatted("%8.3f")
         val sidx = idx.formatted("%20d")
-        val sxmin = rx.min.formatted("%9.4f")
-        val sxmax = rx.max.formatted("%9.4f")
-        val symin = ry.min.formatted("%9.4f")
-        val symax = ry.max.formatted("%9.4f")
         println(s"[LEXI ROUND-TRIP] POINT($sx $sy) -> $sidx = $gh -> ($rx, $ry)")
       }
 
@@ -71,8 +68,8 @@ class LexicographicTest extends Specification with LazyLogging {
         val precisions = new ords2ordvec(Seq(xBits, yBits)).toOrdinalVector
         val sfc = ZCurve(precisions)
 
-        val Longitude = Real1DPartitioner(RealDimension(-180.0, true, 180.0, true), 1L << xBits)
-        val Latitude = Real1DPartitioner(RealDimension(-90.0, true, 90.0, true), 1L << yBits)
+        val Longitude = DefaultDimensions.createLongitude(xBits)
+        val Latitude = DefaultDimensions.createLatitude(yBits)
 
         val idx = sfc.index(OrdinalVector(Longitude.index(x), Latitude.index(y)))
         val gh = sfc.lexEncodeIndex(idx)

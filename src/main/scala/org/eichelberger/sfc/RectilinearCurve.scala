@@ -5,6 +5,10 @@ import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
 
+object RectilinearCurve {
+  def apply(x: OrdinalNumber*): RectilinearCurve = new RectilinearCurve(OrdinalVector(x: _*))
+}
+
 /**
  * Assumes that the dimensions are listed in order from most
  * significant (first) to least significant (last).
@@ -15,6 +19,8 @@ import org.eichelberger.sfc.SpaceFillingCurve._
  * the end.
  */
 case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
+  import org.eichelberger.sfc.RectilinearCurve._
+
   val bitMasks = precisions.x.map(p => (1L << p) - 1L)
 
   def index(point: OrdinalVector): OrdinalNumber = {

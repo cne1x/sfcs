@@ -42,10 +42,14 @@ object SpaceFillingCurve {
   case class OrdinalRanges(pairs: OrdinalPair*) {
     def size: Int = pairs.size
     def toSeq: Seq[OrdinalPair] = pairs.toSeq
+    def iterator: Iterator[OrdinalPair] = pairs.iterator
   }
 
   case class Query(rangesPerDim: Seq[OrdinalRanges]) {
+    def numDimensions = rangesPerDim.size
     def toSeq = rangesPerDim
+    def +(that: Query) =
+      Query(rangesPerDim ++ that.rangesPerDim)
   }
 
   def consolidatedRangeIterator(ranges: Iterator[OrdinalPair]) =
@@ -258,7 +262,7 @@ object SpaceFillingCurve {
     // find the largest group
     var i = maxBits
     var b = binDelta(coords.min, maxBits, i)
-    var unfound = b > span
+    var unfound = b >= span
     while (i >= 1 && unfound) {
       i = i - 1
       b = binDelta(coords.min, maxBits, i)
@@ -275,7 +279,19 @@ object SpaceFillingCurve {
     lowEnd ++ highEnd
   }
 
-  trait SpaceFillingCurve {
+  trait Composable {
+    def n: Int
+  }
+
+  case class Cell(dimensions: Seq[Dimension[_]]) {
+    def size = dimensions.size
+    def contains(values: Seq[_]): Boolean =
+      dimensions.zip(values).forall {
+        case (dim, value) => dim.containsAny(value)
+      }
+  }
+
+  trait SpaceFillingCurve extends Composable {
     // the number of bits consumed by each of the constituent dimensions
     def precisions: OrdinalVector
 

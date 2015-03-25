@@ -6,17 +6,12 @@ import scala.collection.mutable
 import scala.util.{Success, Try}
 
 trait GenericCurveValidation {
+  import GenericTesting._
+
   def curveName: String
 
   def createCurve(precisions: OrdinalNumber*): SpaceFillingCurve
   
-  def time[T](a: () => T): (T, Long) = {
-    val msStart = System.currentTimeMillis()
-    val result = a()
-    val msStop = System.currentTimeMillis()
-    (result, msStop - msStart)
-  }
-
   // utility method for converting a single cell index (not Hilbert ordered,
   // but naively ordered one dimension at a time) to a point
   def idx2pt(sfc: SpaceFillingCurve, idx: Long): OrdinalVector = {
