@@ -5,6 +5,8 @@ import org.eichelberger.sfc.SpaceFillingCurve._
 import org.eichelberger.sfc.utils.Lexicographics.Lexicographic
 import org.joda.time.DateTime
 
+// four-dimensionals...
+
 case class XYZT_C(xPrecision: Int, yPrecision: Int, zPrecision: Int, tPrecision: Int)
   extends ComposedCurve(
     CompactHilbertCurve(xPrecision, yPrecision, zPrecision, tPrecision),
@@ -118,3 +120,30 @@ case class XY_C__ZT_C__Z(xPrecision: Int, yPrecision: Int, zPrecision: Int, tPre
       )
     )
   )
+
+// two-dimensional geographics...
+
+case class XY_R(xPrecision: Int, yPrecision: Int)
+  extends ComposedCurve(
+    RectilinearCurve(xPrecision, yPrecision),
+    Seq(
+      DefaultDimensions.createLongitude(xPrecision),
+      DefaultDimensions.createLatitude(yPrecision)
+    ))
+
+case class XY_Z(xPrecision: Int, yPrecision: Int)
+  extends ComposedCurve(
+    ZCurve(xPrecision, yPrecision),
+    Seq(
+      DefaultDimensions.createLongitude(xPrecision),
+      DefaultDimensions.createLatitude(yPrecision)
+    ))
+
+case class XY_C(xPrecision: Int, yPrecision: Int)
+  extends ComposedCurve(
+    CompactHilbertCurve(xPrecision, yPrecision),
+    Seq(
+      DefaultDimensions.createLongitude(xPrecision),
+      DefaultDimensions.createLatitude(yPrecision)
+    ))
+

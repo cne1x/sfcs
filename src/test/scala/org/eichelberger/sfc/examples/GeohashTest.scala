@@ -6,10 +6,10 @@ import org.eichelberger.sfc.SpaceFillingCurve._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
+import org.eichelberger.sfc.GenericTesting._
 
 @RunWith(classOf[JUnitRunner])
 class GeohashTest extends Specification with LazyLogging {
-  val bboxCville = (-78.5238, 38.0097, -78.4464, 38.0705)
   val xCville = -78.488407
   val yCville = 38.038668
 
@@ -72,7 +72,7 @@ class GeohashTest extends Specification with LazyLogging {
 
       for (dimPrec <- 10 to 25) {
         val ((numCells, numRanges), ms) = GenericTesting.time{ () => atPrecision(dimPrec, dimPrec - 1) }
-        println(s"[ranges across scales, Charlottesville] precision (${dimPrec}, ${dimPrec - 1}) -> $numCells / $numRanges = ${numCells / numRanges} in ${ms} milliseconds")
+        println(s"[ranges across scales, Charlottesville] precision ($dimPrec, ${dimPrec - 1}) -> $numCells / $numRanges = ${numCells / numRanges} in $ms milliseconds")
       }
 
       1 must equalTo(1)

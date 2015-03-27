@@ -24,7 +24,7 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
   }.sum
 
 
-  def _getRangesCoveringCell(cell: Cell): CoveringReturn = {
+  private def _getRangesCoveringCell(cell: Cell): CoveringReturn = {
     // dimension ranges must be picked off in-order
     val covretFromChildren = children.foldLeft(new CoveringReturn(cell))((covret, child) => child match {
       case c: ComposedCurve =>

@@ -140,6 +140,22 @@ is much faster for the Z-order curve than it is for the Hilbert curve, primarily
 because the current implementation of Hilbert could stand some tweaking, being
 largely a first-draft translation of the algorithms described in the Hamilton papers.
 
+#### Visual examples of delivered query ranges
+
+Given a bounding box that surrounds Charlotesville, VA, three simple 2D curves --
+rectilinear, Z-order, and Hilbert -- 
+were all asked to identify their index ranges that would cover the entire query.  Each
+contiguous index range is drawn separately, with the color roughly
+proportional to how many cells are contained in the contiguous range.
+
+<img src="img/cville-covering-35r.png" height="200" width="250"/>&nbsp;
+<img src="img/cville-covering-35z.png" height="200" width="250"/>&nbsp;
+<img src="img/cville-covering-35c.png" height="200" width="250"/>
+
+Again, most of what this shows is what was summarized in the preceding section:
+Hilbert does a better job of capturing larger, contiguous ranges, whereas it
+becomes simple to see why the rectilinear curve is a faster planner.
+
 ## Curves included in this library
 
 These are the space-filling curves that have already been encoded:
@@ -154,6 +170,17 @@ These are the space-filling curves that have already been encoded:
 1.  compact-hilbert:  Based on a "U"-shape path that recurses (while rotating, flipping), a
     Hilbert curve tends to have fewer, shorter discontinuities in the index-space than the z-order
     curve.  The "compact" refers to the fact that not all dimensions need share the same precision.
+
+## "Wouldn't it be cool..."
+
+Here are some tasks that would be fun to incorporate:
+
+1.  Move SFC index encoding and decoding into the GPU.  Most of these computations
+    are fairly simple bit-twiddling exercises.
+    
+1.  Expand the test suite and benchmarking.  Tie this into the project documentation.
+
+1.  ... {insert your ideas here} ...
 
 ## Other resources
 
