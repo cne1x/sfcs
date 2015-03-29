@@ -156,6 +156,10 @@ Again, most of what this shows is what was summarized in the preceding section:
 Hilbert does a better job of capturing larger, contiguous ranges, whereas it
 becomes simple to see why the rectilinear curve is a faster planner.
 
+#### Compactness v. throughput
+
+<img src="img/curves-4d-prorated.svg" height="400" width="800"/>
+
 ## Curves included in this library
 
 These are the space-filling curves that have already been encoded:

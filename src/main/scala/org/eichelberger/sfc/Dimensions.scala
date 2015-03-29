@@ -77,7 +77,7 @@ case class HalfDimension[T](extreme: T, isExtremeIncluded: Boolean)
 // for now, assume all dimensions are bounded
 // (reasonable, unless you're really going to use BigInt or
 // some other arbitrary-precision class as the basis)
-case class Dimension[T : DimensionLike](min: T, isMinIncluded: Boolean, max: T, isMaxIncluded: Boolean, precision: OrdinalNumber)(implicit classTag: ClassTag[T])
+case class Dimension[T : DimensionLike](name: String, min: T, isMinIncluded: Boolean, max: T, isMaxIncluded: Boolean, precision: OrdinalNumber)(implicit classTag: ClassTag[T])
   extends Composable {
 
   val basis = implicitly[DimensionLike[T]]
@@ -140,7 +140,7 @@ case class Dimension[T : DimensionLike](min: T, isMinIncluded: Boolean, max: T, 
   def inverseIndex(ordinal: OrdinalNumber): Dimension[T] = {
     val lowerBound = getLowerBound(ordinal)
     val upperBound = getUpperBound(ordinal)
-    new Dimension[T](lowerBound.extreme, lowerBound.isExtremeIncluded, upperBound.extreme, upperBound.isExtremeIncluded, 1L)
+    new Dimension[T](name, lowerBound.extreme, lowerBound.isExtremeIncluded, upperBound.extreme, upperBound.isExtremeIncluded, 1L)
   }
 
   override def toString: String =
@@ -153,12 +153,12 @@ case class Dimension[T : DimensionLike](min: T, isMinIncluded: Boolean, max: T, 
 object DefaultDimensions {
   import Dimensions._
 
-  val dimLongitude = Dimension[Double](-180.0, isMinIncluded = true, +180.0, isMaxIncluded = true, 18L)
-  val dimLatitude = Dimension[Double](-90.0, isMinIncluded = true, +90.0, isMaxIncluded = true, 17L)
+  val dimLongitude = Dimension[Double]("x", -180.0, isMinIncluded = true, +180.0, isMaxIncluded = true, 18L)
+  val dimLatitude = Dimension[Double]("y", -90.0, isMinIncluded = true, +90.0, isMaxIncluded = true, 17L)
 
   val MinDate = new DateTime(1900,  1,  1,  0,  0,  0, DateTimeZone.forID("UTC"))
   val MaxDate = new DateTime(2100, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
-  val dimTime = Dimension(MinDate, isMinIncluded = true, MaxDate, isMaxIncluded = true, 15L)
+  val dimTime = Dimension("t", MinDate, isMinIncluded = true, MaxDate, isMaxIncluded = true, 15L)
 
   def createLongitude(atPrecision: OrdinalNumber): Dimension[Double] =
     dimLongitude.copy(precision = atPrecision)
@@ -172,6 +172,6 @@ object DefaultDimensions {
   def createDateTime(minDate: DateTime, maxDate: DateTime, atPrecision: OrdinalNumber): Dimension[DateTime] =
     dimTime.copy(min = minDate, max = maxDate, precision = atPrecision)
 
-  def createDimension[T](minimum: T, maximum: T, precision: OrdinalNumber)(implicit dimLike: DimensionLike[T], ctag: ClassTag[T]): Dimension[T] =
-    Dimension[T](minimum, isMinIncluded = true, maximum, isMaxIncluded = true, precision)
+  def createDimension[T](name: String, minimum: T, maximum: T, precision: OrdinalNumber)(implicit dimLike: DimensionLike[T], ctag: ClassTag[T]): Dimension[T] =
+    Dimension[T](name, minimum, isMinIncluded = true, maximum, isMaxIncluded = true, precision)
 }

@@ -53,6 +53,8 @@ object CompactHilbertCurve {
 case class CompactHilbertCurve(precisions: OrdinalVector) extends QuadTreeCurve with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.CompactHilbertCurve._
 
+  val name = "H"
+
   // for any turn through (en|de)coding, no more than n bits can be valid
   val ValidBitsMask: Long = (1L << n) - 1L
 

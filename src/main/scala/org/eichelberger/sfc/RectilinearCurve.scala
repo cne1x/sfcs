@@ -21,6 +21,8 @@ object RectilinearCurve {
 case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.RectilinearCurve._
 
+  val name = "R"
+
   val bitMasks = precisions.x.map(p => (1L << p) - 1L)
 
   def index(point: OrdinalVector): OrdinalNumber = {

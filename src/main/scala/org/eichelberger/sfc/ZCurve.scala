@@ -12,6 +12,8 @@ object ZCurve {
 case class ZCurve(val precisions: OrdinalVector) extends QuadTreeCurve with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.ZCurve._
 
+  val name = "Z"
+
   // validate precisions
   require(precisions.size > 1, s"Z-curves are meant to operate on two or more dimensions (${precisions.size})")
   for (i <- 1 to precisions.size - 1; prev = precisions(i - 1); curr = precisions(i)) {

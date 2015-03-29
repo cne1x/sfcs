@@ -281,6 +281,7 @@ object SpaceFillingCurve {
 
   trait Composable {
     def n: Int
+    def name: String
   }
 
   case class Cell(dimensions: Seq[Dimension[_]]) {
@@ -327,12 +328,12 @@ object SpaceFillingCurve {
     // override this with their own, curve-specific versions
     def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
       // for each dimension, partition the ranges into bin pairs
-      val covers = (0 until n).map(dimension => {
+      val covers = (0 until n).par.map(dimension => {
         val dimRanges: OrdinalRanges = query.toSeq(dimension)
         val dimCovers: Seq[OrdinalPair] =
           dimRanges.toSeq.flatMap(range => bitCoverages(range, precisions(dimension)))
         dimCovers
-      })
+      }).toIndexedSeq
 
       // cross all of the dimensions, finding the contiguous cubes
       val counts = OrdinalVector(covers.map(_.size.toOrdinalNumber):_*)
@@ -364,7 +365,7 @@ object SpaceFillingCurve {
 
       // for each contiguous cube, find the corners, and return (min, max) as that cube's index range
       val dimFactors: List[OrdinalPair] = List.fill(n)(OrdinalPair(0, 1))
-      val ranges: Iterator[OrdinalPair] = cubes.map(cube => {
+      val ranges: Iterator[OrdinalPair] = cubes.toSeq.par.map(cube => {
         // if this is a point, use it
         if (isPoint(cube)) {
           // this is a single point
@@ -389,7 +390,7 @@ object SpaceFillingCurve {
           })
           OrdinalPair(extrema._1, extrema._2)
         }
-      })
+      }).toIterator
 
       consolidatedRangeIterator(ranges)
     }

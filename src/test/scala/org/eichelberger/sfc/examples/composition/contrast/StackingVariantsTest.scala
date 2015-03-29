@@ -20,10 +20,6 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
   import GenericTesting._
 
-  implicit class NamedComposite(curve: ComposedCurve) {
-    def getName: String = curve.getClass.getSimpleName
-  }
-
   case class XYZTPoint(x: Double, y: Double, z: Double, t: DateTime)
 
   case class MinMax[T](min: T, max: T)
@@ -48,9 +44,9 @@ class StackingVariantsTest extends Specification with LazyLogging {
       val z0 = Math.min(49000.0, 1000.0 * Math.floor(z / 1000.0))
       val t0 = new DateTime(t.getYear, t.getMonthOfYear, 1, 0, 0, 0, DateTimeZone.forID("UTC"))
       val cell = Cell(Seq(
-        DefaultDimensions.createDimension(x0, x0 + 1.0, 1L),
-        DefaultDimensions.createDimension(y0, y0 + 1.0, 1L),
-        DefaultDimensions.createDimension(z0, z0 + 1000.0, 1L),
+        DefaultDimensions.createDimension("x", x0, x0 + 1.0, 1L),
+        DefaultDimensions.createDimension("y", y0, y0 + 1.0, 1L),
+        DefaultDimensions.createDimension("z", z0, z0 + 1000.0, 1L),
         DefaultDimensions.createDateTime(t0, t0.plus(Months.months(1)), 1L)
       ))
       // return this pair
@@ -60,37 +56,42 @@ class StackingVariantsTest extends Specification with LazyLogging {
   val points: Seq[XYZTPoint] = pointQueryPairs.map(_._1)
   val cells: Seq[Cell] = pointQueryPairs.map(_._2)
 
-  def verifyRoundTrip(xyzt: ComposedCurve, print: Boolean = false): Boolean = {
+  def verifyRoundTrip(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
     val (_, msElapsed) = time(() => {
       var i = 0
       while (i < n) {
         val XYZTPoint(x, y, z, t) = points(i)
-        val hash = xyzt.pointToHash(Seq(x, y, z, t))
-        val cell = xyzt.hashToCell(hash)
-        if (print) println(s"[${xyzt.getClass.getSimpleName} verify round trip] ${points(i)} -> $hash -> $cell")
-        cell.contains(Seq(x, y, z, t)) must beTrue
+        val pt =
+          if (curve.numLeafNodes == 4) Seq(x, y, z, t)
+          else Seq(x, y, t)
+        val hash = curve.pointToHash(pt)
+        val cell = curve.hashToCell(hash)
+        if (print) println(s"[${curve.getClass.getSimpleName} verify round trip] ${points(i)} -> $hash -> $cell")
+        cell.contains(pt) must beTrue
         i = i + 1
       }
     })
 
-    //println(s"[${xyzt.getClass.getSimpleName} verify round trip] total time:  ${msElapsed/1000.0} seconds")
-    println(s"${xyzt.getName},round-trip,${msElapsed/1000.0}")
+    println(s"${curve.name},round-trip,${msElapsed/1000.0},${curve.numLeafNodes}")
+    pw.println(s"${curve.name}\tround-trip\t${msElapsed/1000.0}\t${curve.numLeafNodes}")
 
     true
   }
 
-  def verifyQueryRanges(xyzt: ComposedCurve, print: Boolean = false): Boolean = {
+  def verifyQueryRanges(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
     var totalCells = 0L
     var totalRanges = 0L
 
     val (_, msElapsed) = time(() => {
       var i = 0
       while (i < n) {
-        val cell = cells(i)
-        val ranges = xyzt.getRangesCoveringCell(cell).toList
+        val cell =
+          if (curve.numLeafNodes == 4) cells(i)
+          else Cell(cells(i).dimensions.take(2) ++ cells(i).dimensions.takeRight(1))
+        val ranges = curve.getRangesCoveringCell(cell).toList
         totalRanges = totalRanges + ranges.size
         totalCells = totalCells + ranges.map(_.size).sum
-        if (print) println(s"[${xyzt.getName} verify query ranges] ${points(i)} -> $cell -> ${ranges.size} ranges")
+        if (print) println(s"[${curve.name} verify query ranges] ${points(i)} -> $cell -> ${ranges.size} ranges")
         i = i + 1
       }
     })
@@ -98,20 +99,20 @@ class StackingVariantsTest extends Specification with LazyLogging {
     val avgRanges = (totalRanges.toDouble / n.toDouble).formatted("%1.2f")
     val avgCells = (totalCells.toDouble / n.toDouble).formatted("%1.2f")
 
-    //println(s"[${xyzt.getClass.getSimpleName} verify query ranges] ${xyzt.M} bits, $n points, $avgRanges avg ranges, $avgCells avg cells, total time:  ${msElapsed/1000.0} seconds")
-    println(s"${xyzt.getName},queries,${xyzt.M},$n,$avgRanges,$avgCells,${msElapsed/1000.0}")
+    println(s"${curve.name},queries,${curve.M},$n,$avgRanges,$avgCells,${msElapsed/1000.0},${curve.numLeafNodes}")
+    pw.println(s"${curve.name}\tqueries\t${curve.M}\t$n\t$avgRanges\t$avgCells\t${msElapsed/1000.0}\t${curve.numLeafNodes}")
 
     true
   }
 
   def writeCharlottesvilleRanges(curve: ComposedCurve, precision: Int): Boolean = {
-    val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.getName}.tsv")))
-    val pw2 = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.getName}.txt")))
+    val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.name}.tsv")))
+    val pw2 = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.name}.txt")))
     pw.println("order\tidx_min\tidx_max\tnum_cells\twkt")
 
     val queryCell: Cell = Cell(Seq(
-      DefaultDimensions.createDimension(bboxCville._1, bboxCville._3, 1L),
-      DefaultDimensions.createDimension(bboxCville._2, bboxCville._4, 1L)
+      DefaultDimensions.createDimension("x", bboxCville._1, bboxCville._3, 1L),
+      DefaultDimensions.createDimension("y", bboxCville._2, bboxCville._4, 1L)
     ))
     val sparse = collection.mutable.HashMap[OrdinalVector, OrdinalNumber]()
     var maxIdx = 0L
@@ -152,36 +153,40 @@ class StackingVariantsTest extends Specification with LazyLogging {
     true
   }
 
-  def perCurveTestSuite(curve: ComposedCurve, print: Boolean = false): Boolean = {
-    verifyRoundTrip(curve, print) &&
-      verifyQueryRanges(curve, print)
+  def perCurveTestSuite(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
+    verifyRoundTrip(curve, pw, print) &&
+      verifyQueryRanges(curve, pw, print)
   }
 
   "the various compositions" should {
     "print scaling results" >> {
-      for (basePrecision <- 5 to 7) {  //@TODO 5 to 11
-        // purely horizontal
-        perCurveTestSuite(new XYZT_C(basePrecision, basePrecision, basePrecision, basePrecision))
-        perCurveTestSuite(new XYZT_Z(basePrecision, basePrecision, basePrecision, basePrecision))
-        perCurveTestSuite(new XYZT_R(basePrecision, basePrecision, basePrecision, basePrecision))
+      val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/composed-curves.tsv")))
 
-        // two Hilbert curves joined by a single curve
-        perCurveTestSuite(new XY_C__ZT_C__C(basePrecision, basePrecision, basePrecision, basePrecision))
-        perCurveTestSuite(new XY_C__ZT_C__Z(basePrecision, basePrecision, basePrecision, basePrecision))
-        perCurveTestSuite(new XY_C__ZT_C__R(basePrecision, basePrecision, basePrecision, basePrecision))
+      for (totalPrecision <- 20 to 30) {
+        // 4D, horizontal
+        FactoryXYZT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
 
-        // purely vertical
-        perCurveTestSuite(new XY_C__Z_R__T_R(basePrecision, basePrecision, basePrecision, basePrecision))
+        // 4D, mixed
+        FactoryXYZT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, pw))
+
+        // 4D, vertical
+        FactoryXYZT(totalPrecision, 3).getCurves.map(curve => perCurveTestSuite(curve, pw))
+
+        // 3D, horizontal
+        FactoryXYT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
+
+        // 3D, mixed
+        FactoryXYT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, pw))
       }
+
+      pw.close()
 
       1 must equalTo(1)
     }
 
     "dump query ranges to CSV" >> {
-      for (basePrecision <- 18 to 18) {  //@TODO 10 to 18
-        writeCharlottesvilleRanges(new XY_C(basePrecision, basePrecision - 1), (basePrecision << 1) - 1)
-        writeCharlottesvilleRanges(new XY_Z(basePrecision, basePrecision - 1), (basePrecision << 1) - 1)
-        writeCharlottesvilleRanges(new XY_R(basePrecision, basePrecision - 1), (basePrecision << 1) - 1)
+      for (totalPrecision <- 21 to 35 by 2) {
+        FactoryXY(totalPrecision).getCurves.map(curve => writeCharlottesvilleRanges(curve, curve.M))
       }
 
       1 must equalTo(1)

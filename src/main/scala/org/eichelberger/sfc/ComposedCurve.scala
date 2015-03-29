@@ -15,7 +15,9 @@ import ComposedCurve._
 
 // Composables can be either SFCs or Partitioners;
 // leaf nodes must all be Partitioners
-class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composable]) extends SpaceFillingCurve with Lexicographic {
+class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composable])
+  extends SpaceFillingCurve with Lexicographic {
+
   lazy val precisions: OrdinalVector = delegate.precisions
 
   lazy val numLeafNodes: Int = children.map {
@@ -23,6 +25,8 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
     case d: Dimension[_]  => 1
   }.sum
 
+  lazy val name: String = delegate.name +
+    children.map(_.name).mkString("(", ",", ")")
 
   private def _getRangesCoveringCell(cell: Cell): CoveringReturn = {
     // dimension ranges must be picked off in-order
