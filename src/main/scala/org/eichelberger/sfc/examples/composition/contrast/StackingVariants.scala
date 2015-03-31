@@ -5,20 +5,31 @@ import org.eichelberger.sfc.SpaceFillingCurve._
 import org.eichelberger.sfc.utils.Lexicographics.Lexicographic
 import org.joda.time.DateTime
 
+object BaseCurves {
+  val Rectilinear = 0
+  val ZOrder      = 1
+  val Hilbert     = 2
+
+  def decomposePrecision(combination: OrdinalVector, precision: Int): (Int, Int) = {
+    val b = precision / (combination.size + 1)
+    val a = precision - b
+    (a, b)
+  }
+
+  def rawNWayCurve(combination: OrdinalVector, precisions: OrdinalNumber*): SpaceFillingCurve =
+    combination.toSeq.last match {
+      case 0 => RectilinearCurve(precisions:_*)
+      case 1 => ZCurve(precisions:_*)
+      case 2 => CompactHilbertCurve(precisions:_*)
+    }
+}
+import BaseCurves._
+
 // four-dimensionals...
 
 case class FactoryXYZT(precision: Int, plys: Int) {
   def buildVerticalCurve(combination: OrdinalVector, precision: Int): ComposedCurve = {
-    val (leftPrec, rightPrec) = combination.toSeq.last match {
-      case 1 =>
-        val b = precision >> 1
-        val a = precision - b
-        (a, b)
-      case _ =>
-        val b = precision / (combination.size + 1)
-        val a = precision - b
-        (a, b)
-    }
+    val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val rightChild: Composable  = combination.size match {
       case 3 => DefaultDimensions.createDateTime(rightPrec)
@@ -32,26 +43,13 @@ case class FactoryXYZT(precision: Int, plys: Int) {
       case _ => throw new Exception("Invalid left child specification")
     }
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(leftPrec, rightPrec)
-      case 1 => ZCurve(leftPrec, rightPrec)
-      case 2 => CompactHilbertCurve(leftPrec, rightPrec)
-    }
+    val rawCurve = rawNWayCurve(combination, leftPrec, rightPrec)
 
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }
 
   def buildMixedCurve(combination: OrdinalVector, precision: Int, side: Int = 0): ComposedCurve = {
-    val (leftPrec, rightPrec) = combination.toSeq.last match {
-      case 1 =>
-        val b = precision >> 1
-        val a = precision - b
-        (a, b)
-      case _ =>
-        val b = precision / (combination.size + 1)
-        val a = precision - b
-        (a, b)
-    }
+    val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val leftChild: Composable = side match {
       case 0 => buildMixedCurve(OrdinalVector(combination(0)), leftPrec, 1)
@@ -64,11 +62,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
       case 2 => DefaultDimensions.createDateTime(rightPrec)
     }
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(leftPrec, rightPrec)
-      case 1 => ZCurve(leftPrec, rightPrec)
-      case 2 => CompactHilbertCurve(leftPrec, rightPrec)
-    }
+    val rawCurve = rawNWayCurve(combination, leftPrec, rightPrec)
 
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }
@@ -79,11 +73,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
     val yPrecision = (precision - tPrecision - zPrecision) >> 1
     val xPrecision = precision - tPrecision - zPrecision - yPrecision
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(xPrecision, yPrecision, zPrecision, tPrecision)
-      case 1 => ZCurve(xPrecision, yPrecision, zPrecision, tPrecision)
-      case 2 => CompactHilbertCurve(xPrecision, yPrecision, zPrecision, tPrecision)
-    }
+    val rawCurve = rawNWayCurve(combination, xPrecision, yPrecision, zPrecision, tPrecision)
 
     new ComposedCurve(
       rawCurve,
@@ -112,16 +102,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
 
 case class FactoryXYT(precision: Int, plys: Int) {
   def buildVerticalCurve(combination: OrdinalVector, precision: Int): ComposedCurve = {
-    val (leftPrec, rightPrec) = combination.toSeq.last match {
-      case 1 =>
-        val b = precision >> 1
-        val a = precision - b
-        (a, b)
-      case _ =>
-        val b = precision / (combination.size + 1)
-        val a = precision - b
-        (a, b)
-    }
+    val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val rightChild: Composable  = combination.size match {
       case 2 => DefaultDimensions.createDateTime(rightPrec)
@@ -134,11 +115,7 @@ case class FactoryXYT(precision: Int, plys: Int) {
       case _ => throw new Exception("Invalid left child specification")
     }
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(leftPrec, rightPrec)
-      case 1 => ZCurve(leftPrec, rightPrec)
-      case 2 => CompactHilbertCurve(leftPrec, rightPrec)
-    }
+    val rawCurve = rawNWayCurve(combination, leftPrec, rightPrec)
 
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }
@@ -148,11 +125,7 @@ case class FactoryXYT(precision: Int, plys: Int) {
     val yPrecision = (precision - tPrecision) >> 1
     val xPrecision = precision - tPrecision - yPrecision
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(xPrecision, yPrecision, tPrecision)
-      case 1 => ZCurve(xPrecision, yPrecision, tPrecision)
-      case 2 => CompactHilbertCurve(xPrecision, yPrecision, tPrecision)
-    }
+    val rawCurve = rawNWayCurve(combination, xPrecision, yPrecision, tPrecision)
 
     new ComposedCurve(
       rawCurve,
@@ -178,25 +151,12 @@ case class FactoryXYT(precision: Int, plys: Int) {
 
 case class FactoryXY(precision: Int) {
   def buildCurve(combination: OrdinalVector, precision: Int): ComposedCurve = {
-    val (leftPrec, rightPrec) = combination.toSeq.last match {
-      case 1 =>
-        val b = precision >> 1
-        val a = precision - b
-        (a, b)
-      case _ =>
-        val b = precision / (combination.size + 1)
-        val a = precision - b
-        (a, b)
-    }
+    val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val rightChild: Composable = DefaultDimensions.createLatitude(rightPrec)
     val leftChild: Composable = DefaultDimensions.createLongitude(leftPrec)
 
-    val rawCurve = combination.toSeq.last match {
-      case 0 => RectilinearCurve(leftPrec, rightPrec)
-      case 1 => ZCurve(leftPrec, rightPrec)
-      case 2 => CompactHilbertCurve(leftPrec, rightPrec)
-    }
+    val rawCurve = rawNWayCurve(combination, leftPrec, rightPrec)
 
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }

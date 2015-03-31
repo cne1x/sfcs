@@ -25,6 +25,8 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
     case d: Dimension[_]  => 1
   }.sum
 
+  override lazy val plys: Int = 1 + children.map(_.plys).max
+
   lazy val name: String = delegate.name +
     children.map(_.name).mkString("(", ",", ")")
 

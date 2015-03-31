@@ -280,7 +280,8 @@ object SpaceFillingCurve {
   }
 
   trait Composable {
-    def n: Int
+    def n: Int = 1
+    def plys: Int = 1
     def name: String
   }
 
@@ -297,7 +298,7 @@ object SpaceFillingCurve {
     def precisions: OrdinalVector
 
     // the number of dimensions
-    val n = precisions.size
+    override val n = precisions.size
 
     // the maximum number of bits precision in any single dimension
     val m = precisions.max.toInt

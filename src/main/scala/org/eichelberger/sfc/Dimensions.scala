@@ -82,10 +82,6 @@ case class Dimension[T : DimensionLike](name: String, min: T, isMinIncluded: Boo
 
   val basis = implicitly[DimensionLike[T]]
 
-  // required by the "Composable" interface to denote that this
-  // represents but a single dimension
-  val n = 1
-
   val span = basis.subtract(max, min)
   val numBins = 1L << precision
   val penultimateBin = numBins - 1L

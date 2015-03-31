@@ -20,12 +20,23 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
   import GenericTesting._
 
+  object TestLevels extends Enumeration {
+    type TestLevel = Value
+    val Small, Medium, Large = Value
+  }
+  import TestLevels._
+  val testLevel = Medium
+
   case class XYZTPoint(x: Double, y: Double, z: Double, t: DateTime)
 
   case class MinMax[T](min: T, max: T)
 
   // standard test suite of points and queries
-  val n = 100  //@TODO increase this again!
+  val n = testLevel match {
+    case Small  =>   10
+    case Medium =>  100
+    case Large  => 1000
+  }
   val pointQueryPairs: Seq[(XYZTPoint, Cell)] = {
     val prng = new Random(5771L)
     val MinDate = new DateTime(2010, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC"))
@@ -73,7 +84,6 @@ class StackingVariantsTest extends Specification with LazyLogging {
     })
 
     println(s"${curve.name},round-trip,${msElapsed/1000.0},${curve.numLeafNodes}")
-    pw.println(s"${curve.name}\tround-trip\t${msElapsed/1000.0}\t${curve.numLeafNodes}")
 
     true
   }
@@ -81,6 +91,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
   def verifyQueryRanges(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
     var totalCells = 0L
     var totalRanges = 0L
+    var totalSpan = 0L
 
     val (_, msElapsed) = time(() => {
       var i = 0
@@ -91,16 +102,40 @@ class StackingVariantsTest extends Specification with LazyLogging {
         val ranges = curve.getRangesCoveringCell(cell).toList
         totalRanges = totalRanges + ranges.size
         totalCells = totalCells + ranges.map(_.size).sum
+        val extent: (Long, Long) = ranges.foldLeft((0L, 0L))((acc, range) => acc match {
+          case (minAcc, maxAcc) =>
+            (Math.min(minAcc, range.min), Math.max(maxAcc, range.max))
+        })
+        totalSpan = totalSpan + (extent._2 - extent._1 + 1)
         if (print) println(s"[${curve.name} verify query ranges] ${points(i)} -> $cell -> ${ranges.size} ranges")
         i = i + 1
       }
     })
 
-    val avgRanges = (totalRanges.toDouble / n.toDouble).formatted("%1.2f")
-    val avgCells = (totalCells.toDouble / n.toDouble).formatted("%1.2f")
+    val seconds = msElapsed.toDouble / 1000.0
+    val avgRanges = totalRanges.toDouble / n.toDouble
+    val avgCells = totalCells.toDouble / n.toDouble
+    val avgCellsPerSecond = avgCells / seconds
+    val avgCellsPerRange = avgCells / avgRanges
+    val avgRangeDensity = totalCells / totalSpan
+    val avgScore = avgCellsPerRange * avgCellsPerSecond
 
-    println(s"${curve.name},queries,${curve.M},$n,$avgRanges,$avgCells,${msElapsed/1000.0},${curve.numLeafNodes}")
-    pw.println(s"${curve.name}\tqueries\t${curve.M}\t$n\t$avgRanges\t$avgCells\t${msElapsed/1000.0}\t${curve.numLeafNodes}")
+    println(s"${curve.name},queries,${curve.M},$n,${curve.numLeafNodes},$avgRanges,$avgCells,$seconds")
+    pw.println(Seq(
+      curve.name,
+      "ranges",
+      curve.M,
+      n,
+      curve.numLeafNodes,
+      curve.plys,
+      avgRanges,
+      avgCells,
+      avgCellsPerSecond,
+      avgCellsPerRange,
+      avgRangeDensity,
+      avgScore,
+      seconds
+    ).mkString("\t"))
 
     true
   }
@@ -161,8 +196,29 @@ class StackingVariantsTest extends Specification with LazyLogging {
   "the various compositions" should {
     "print scaling results" >> {
       val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/composed-curves.tsv")))
+      pw.println(Seq(
+        "curve",
+        "test.type",
+        "precision",
+        "replications",
+        "dimensions",
+        "plys",
+        "avg.ranges",
+        "avg.cells",
+        "cells.per.second",
+        "cells.per.range",
+        "range.density",
+        "score",
+        "seconds"
+      ).mkString("\t"))
 
-      for (totalPrecision <- 20 to 30) {
+      val (bitsLow, bitsHigh) = testLevel match {
+        case Small  => (20, 30)
+        case Medium => (25, 35)
+        case Large  => (20, 40)
+      }
+
+      for (totalPrecision <- bitsLow to bitsHigh) {
         // 4D, horizontal
         FactoryXYZT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
 

@@ -28,13 +28,14 @@ trait GenericCurveValidation {
 
   def testOrderings(): Boolean = {
     def testOrdering(sfcOpt: Option[SpaceFillingCurve]): Boolean = {
-      sfcOpt.map(sfc => {
+      sfcOpt.foreach(sfc => {
         val id = sfc.precisions.cardinalities.toSeq.mkString(" x ")
         println(s"Validating $curveName $id space...")
         
         var everSeen = mutable.BitSet()
 
-        for (i <- 0 until sfc.size.toInt) {
+        var i = 0
+        while (i < sfc.size.toInt) {
           val point = idx2pt(sfc, i)
           val h = sfc.index(point)
           val point2 = sfc.inverseIndex(h)
@@ -49,10 +50,15 @@ trait GenericCurveValidation {
           // accumulate this index
           if (everSeen(h.toInt)) throw new Exception(s"Index collision:  input $point -> $h")
           everSeen = everSeen + h.toInt
+
+          i = i + 1
         }
 
-        (0 until sfc.size.toInt).foreach(i =>
-          if (!everSeen(i)) throw new Exception(s"Unseen index value:  $i"))
+        i = 0
+        while (i < sfc.size.toInt) {
+          if (!everSeen(i)) throw new Exception(s"Unseen index value:  $i")
+          i = i + 1
+        }
       })
 
       // if you get here, the test was successful
