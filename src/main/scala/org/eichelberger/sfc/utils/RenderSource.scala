@@ -1,5 +1,6 @@
 package org.eichelberger.sfc.utils
 
+import java.awt.Color
 import java.io.{PrintStream, PrintWriter}
 
 import org.eichelberger.sfc.SpaceFillingCurve._
@@ -132,6 +133,49 @@ class ScreenRenderTarget extends RenderTarget {
   }
 }
 
+object ShadeRampEndpoint {
+  def apply(index: OrdinalNumber, color: Color): ShadeRampEndpoint = {
+    val (hue, saturation, brightness) = {
+      var arr: Array[Float] = null
+      Color.RGBtoHSB(color.getRed, color.getGreen, color.getBlue, arr)
+      (arr(0), arr(1), arr(2))
+    }
+
+    new ShadeRampEndpoint(index, hue, saturation, brightness)
+  }
+}
+import ShadeRampEndpoint._
+
+case class ShadeRampEndpoint(index: OrdinalNumber, hue: Float, saturation: Float, brightness: Float)
+
+case class ShadeRamp(endLow: ShadeRampEndpoint, endHigh: ShadeRampEndpoint) {
+  val indexSpan = endHigh.index - endLow.index
+  val slopeHue = (endHigh.hue - endLow.hue) / indexSpan.toDouble
+  val slopeSaturation = (endHigh.saturation - endLow.saturation) / indexSpan.toDouble
+  val slopeBrightness = (endHigh.brightness - endLow.brightness) / indexSpan.toDouble
+
+  val InvisibleColor = new Color(0, 0, 0, 0)
+
+  def getColor(index: OrdinalNumber): Color = {
+    if (index < endLow.index) return InvisibleColor
+    if (index > endHigh.index) return InvisibleColor
+
+    val dist = index - endLow.index
+    val h = endLow.hue + dist * slopeHue
+    val s = endLow.saturation + dist * slopeSaturation
+    val b = endLow.brightness + dist * slopeBrightness
+    Color.getHSBColor(h.toFloat, s.toFloat, b.toFloat)
+  }
+
+  def toHexByte(i: Int): String =
+    (if (i < 16) "0" else "") + java.lang.Integer.toHexString(i)
+
+  def getColorHex(index: OrdinalNumber): String = {
+    val color = getColor(index)
+    toHexByte(color.getRed) + toHexByte(color.getGreen) + toHexByte(color.getBlue) + toHexByte(color.getAlpha)
+  }
+}
+
 // dump the layers of the SFC cell-indexes to STDOUT suitable for Graphviz rendering
 //
 // to render correctly:
@@ -143,17 +187,23 @@ class GraphvizRenderTarget extends RenderTarget {
   var numRows: Long = 0L
   var numCols: Long = 0L
 
+  val drawNumbers = true
+  val drawArrows = true
+  val cellShadingRamp: Option[ShadeRamp] = None
+
   def qw(s: String) = "\"" + s + "\""
 
   def beforeRendering(sfc: RenderSource): Unit = {
+    pw.println("// to render correctly:\n//  neato -n input.dot -Tpng -o output.png")
     pw.println("digraph G {")
-    pw.println("node [ shape=\"square\" width=\"0.5\" height=\"0.5\" ]")
+    pw.println("\toutputorder=\"nodesfirst\"")
+    pw.println("\tnode [ shape=\"square\" width=\"1.058\" labelloc=\"c\" fontsize=\"30\" color=\"#000000\"]")
   }
 
   def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
-    pw.println(s"subgraph {")
-    pw.println("edge [ constraint=\"false\" ]")
-    //pw.println(s"<h1>${sfc.getCurveName}:  SLICE $slice</h1>")
+    pw.println(s"\n\tsubgraph {")
+    pw.println("\tedge [ constraint=\"false\" tailclip=\"false\" headclip=\"false\" color=\"#000000FF\" ]")
+    //pw.println(s"<h1>${sfc.getCurveName}:  SLICE $slice</h1>")  //@TODO resolve how to print slice titles
 
     val (nr: Long, nc: Long) = sfc.terminalIndexBounds.size match {
       case 0 => throw new Exception("Cannot print an empty SFC")
@@ -163,29 +213,31 @@ class GraphvizRenderTarget extends RenderTarget {
     numRows = nr; numCols = nc
   }
 
-  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
-  }
+  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
 
   def beforeCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
 
   def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
-    if (index >= 1L) pw.println(s"node_${index - 1L} -> node_$index")
+    if (drawArrows)
+      if (index >= 1L) pw.println(s"\t\tnode_${index - 1L} -> node_$index")
 
     val (x: Long, y: Long) = point.size match {
       case 1 => (point(0) * ptsSpacing, 0L)
       case 2 => (point(1) * ptsSpacing, point(0) * ptsSpacing)
     }
 
-    pw.println(s"node_${index} [ label=${qw(index.toString)} pos=${qw(x.toString + "," + y.toString)} ]")
+    val shading = cellShadingRamp.map(ramp =>
+      "style=\"filled\" fillcolor=\"#" + ramp.getColorHex(index) + "\"").getOrElse("")
+    val label = "label=\"" + (if (drawNumbers) index.toString else "") + "\""
+    pw.println(s"\t\tnode_$index [ $label pos=${qw(x.toString + "," + y.toString)} $shading ]")
   }
 
   def afterCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
 
-  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
-  }
+  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
 
   def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
-    pw.println(s"}")  // end subgraph
+    pw.println(s"\t}")  // end subgraph
   }
 
   def afterRendering(sfc: RenderSource): Unit = {

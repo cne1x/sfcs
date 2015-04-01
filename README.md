@@ -148,9 +148,9 @@ were all asked to identify their index ranges that would cover the entire query.
 contiguous index range is drawn separately, with the color roughly
 proportional to how many cells are contained in the contiguous range.
 
-<img src="img/cville-covering-35r.png" height="200" width="250"/>&nbsp;
-<img src="img/cville-covering-35z.png" height="200" width="250"/>&nbsp;
-<img src="img/cville-covering-35c.png" height="200" width="250"/>
+<img src="img/cville-covering-35-r.png" height="175" width="200"/>&nbsp;
+<img src="img/cville-covering-35-z.png" height="175" width="200"/>&nbsp;
+<img src="img/cville-covering-35-h.png" height="175" width="200"/>
 
 Again, most of what this shows is what was summarized in the preceding section:
 Hilbert does a better job of capturing larger, contiguous ranges, whereas it
@@ -158,7 +158,7 @@ becomes simple to see why the rectilinear curve is a faster planner.
 
 #### Compactness v. throughput
 
-<img src="img/curves-4d-prorated.svg" height="400" width="800"/>
+<img src="img/curves-3D-scores.png" width="600" height="400" />
 
 ## Curves included in this library
 

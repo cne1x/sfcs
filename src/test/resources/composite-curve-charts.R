@@ -46,6 +46,13 @@ q4d <- subset(queries, dimensions==4)
 #
 ####################################################################
 
+# extracts the number of dimensions as a single string;
+# expect "3D" (when homogeneous) or "3,4D" (when heterogeneous)
+
+dimensions.string <- function(df) {
+  paste(paste(sort(unique(df$dimensions)), collapse=","), "D", sep="")
+}
+
 # These charts show how different composites generate different
 # numbers of ranges at different rates.
 
@@ -56,7 +63,7 @@ range.counts_vs_time <- function() {
     scale_x_log10() + scale_y_log10() +
     geom_line(data=q4d, aes(x=avgranges, y=seconds, group=curve, color=curve)) +
     geom_point(data=q4d, aes(x=avgranges, y=seconds, group=curve, color=curve, size=ptsize)) 
-  ggsave(filename="/tmp/curves-4d.svg", width=16, height=5, units="in")
+  ggsave(filename="/tmp/curves-4d.png", width=16, height=5, units="in")
   
   ggplot() + 
     ggtitle("3D space-filling curves:  range counts v. planning time") +
@@ -64,7 +71,7 @@ range.counts_vs_time <- function() {
     scale_x_log10() + scale_y_log10() +
     geom_line(data=q3d, aes(x=avgranges, y=seconds, group=curve, color=curve)) +
     geom_point(data=q3d, aes(x=avgranges, y=seconds, group=curve, color=curve, size=ptsize)) 
-  ggsave(filename="/tmp/curves-3d.svg", width=16, height=5, units="in")
+  ggsave(filename="/tmp/curves-3d.png", width=16, height=5, units="in")
 }
 
 # These charts are meant to illustrate the trade-off between the
@@ -82,19 +89,19 @@ compactness_vs_throughput <- function() {
     ggtitle("4D space-filling curves:  compactness v. throughput") +
     xlab("cells per range (compactness)") +
     ylab("cells per second (throughput)") + 
-    geom_line(data=q4d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve)) +
+    geom_line(data=q4d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve), show_guide=FALSE) +
     scale_x_log10() + scale_y_log10() +
     facet_grid(top.curve ~ plys)
-  ggsave(filename="/tmp/curves-4d-prorated.svg", width=30, height=16, units="in")
+  ggsave(filename="/tmp/curves-4d-prorated.png", width=16, height=5, units="in")
   
   ggplot() +
     ggtitle("3D space-filling curves:  compactness v. throughput") +
     xlab("cells per range (compactness)") +
     ylab("cells per second (throughput)") + 
-    geom_line(data=q3d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve)) +
+    geom_line(data=q3d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve), show_guide=FALSE) +
     scale_x_log10() + scale_y_log10() +
     facet_grid(top.curve ~ plys)
-  ggsave(filename="/tmp/curves-3d-prorated.svg", width=16, height=5, units="in")
+  ggsave(filename="/tmp/curves-3d-prorated.png", width=16, height=5, units="in")
 }
 
 # Generates the distribution of simple scores, ordering
@@ -104,34 +111,28 @@ score.plot <- function() {
   clean.data <- function(df.raw) {
     max.precision <- max(df.raw$precision)
     df.nums <- subset(df.raw, df.raw$score != Inf & df.raw$precision == max.precision)
-    #df.nums <- subset(df.nums0, df.raw$precision == max.precision)
     idxs <- order(df.nums$score, decreasing=TRUE)
     df.clean <- df.nums[idxs,]
     df.clean$x <- 1:nrow(df.clean)
     return(df.clean)
   }
   
-  df <- clean.data(q3d)
-  y.max <- 10 ^ (floor(log10(max(df$score))) + 3.0)
-  y.min <- 10 ^ (floor(log10(min(df$score))))
-  ggplot() +
-    ggtitle(paste("3D curve scores at", max(df$precision), "bits")) +
-    scale_x_continuous(limits = c(0, nrow(df)+2, breaks=NULL)) +
-    scale_y_log10(limits = c(y.min, y.max)) +
-    geom_point(data=df, aes(x=x, y=score, group=full.name, color=curve), show_guide=FALSE) +
-    geom_text(data=df, aes(legend=FALSE, x=x, y=score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
-  ggsave(filename="/tmp/curves-3d-scores.svg", width=8, height=5, units="in")
+  mk.chart <- function(df.raw, width, height) {
+    df <- clean.data(df.raw)
+    dims <- dimensions.string(df)
+    y.max <- 10 ^ (floor(log10(max(df$score))) + 3.0)
+    y.min <- 10 ^ (floor(log10(min(df$score))))
+    ggplot() +
+      ggtitle(paste(dims, "curve scores at", max(df$precision), "bits")) +
+      scale_x_continuous(limits = c(0, nrow(df)+2, breaks=NULL)) +
+      scale_y_log10(limits = c(y.min, y.max)) +
+      geom_point(data=df, aes(x=x, y=score, group=full.name, color=curve), show_guide=FALSE) +
+      geom_text(data=df, aes(legend=FALSE, x=x, y=score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
+    ggsave(filename=paste("/tmp/curves-", dims, "-scores.png", sep=""), width=width, height=height, units="in")
+  }
   
-  df <- clean.data(q4d)
-  y.max <- 10 ^ (floor(log10(max(df$score))) + 3.0)
-  y.min <- 10 ^ (floor(log10(min(df$score))))
-  ggplot() +
-    ggtitle(paste("4D curve scores at", max(df$precision), "bits")) +
-    scale_x_continuous(limits = c(0, nrow(df)+2, breaks=NULL)) +
-    scale_y_log10(limits = c(y.min, y.max)) +
-    geom_point(data=df, aes(x=x, y=score, group=full.name, color=curve), show_guide=FALSE) +
-    geom_text(data=df, aes(legend=FALSE, x=x, y=score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
-  ggsave(filename="/tmp/curves-4d-scores.svg", width=20, height=5, units="in")
+  mk.chart(q3d, 8.0, 5.0)
+  mk.chart(q4d, 20.0, 5.0)
 }
 
 

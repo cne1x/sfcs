@@ -91,6 +91,8 @@ case class Dimension[T : DimensionLike](name: String, min: T, isMinIncluded: Boo
   val doubleMin = basis.toDouble(min)
   val doubleMax = basis.toDouble(max)
 
+  val doubleMid = 0.5 * (doubleMin + doubleMax)
+
   def containsAny(value: Any): Boolean = {
     val coercedValue: T = value.asInstanceOf[T]
     contains(coercedValue)

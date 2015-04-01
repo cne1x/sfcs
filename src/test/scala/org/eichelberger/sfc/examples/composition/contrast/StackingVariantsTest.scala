@@ -25,7 +25,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
     val Small, Medium, Large = Value
   }
   import TestLevels._
-  val testLevel = Medium
+  val testLevel = Small
 
   case class XYZTPoint(x: Double, y: Double, z: Double, t: DateTime)
 
@@ -143,6 +143,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
   def writeCharlottesvilleRanges(curve: ComposedCurve, precision: Int): Boolean = {
     val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.name}.tsv")))
     val pw2 = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.name}.txt")))
+    val pw3 = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/Charlottesville-${precision.formatted("%02d")}-${curve.name}-curve.wkt")))
     pw.println("order\tidx_min\tidx_max\tnum_cells\twkt")
 
     val queryCell: Cell = Cell(Seq(
@@ -155,7 +156,8 @@ class StackingVariantsTest extends Specification with LazyLogging {
     var idxY1 = Long.MinValue
     var idxX0 = Long.MaxValue
     var idxX1 = Long.MinValue
-    curve.getQueryResultRichRanges(queryCell).foreach { rrange => {
+    val ranges = curve.getQueryResultRichRanges(queryCell).toList
+    ranges.foreach { rrange => {
       pw.println(s"${rrange.order}\t${rrange.range.min}\t${rrange.range.max}\t${rrange.range.size}\t${rrange.wkt}")
       for (idx <- rrange.range.min to rrange.range.max) {
         val coords: OrdinalVector = curve.inverseIndex(idx)
@@ -182,6 +184,33 @@ class StackingVariantsTest extends Specification with LazyLogging {
       pw2.println()
     }
 
+    // dump the curve as WKT segments
+    pw3.println(Seq("i", "idxY", "y", "idxX", "x", "idx", "lastx", "lasty", "wkt").mkString("\t"))
+    val longitude = DefaultDimensions.createLongitude(curve.precisions(0))
+    val latitude = DefaultDimensions.createLatitude(curve.precisions(1))
+    def getLatLon(index: OrdinalNumber): (Double, Double) = {
+      val OrdinalVector(ix, iy) = curve.inverseIndex(index)
+      (
+        longitude.inverseIndex(ix).doubleMid,
+        latitude.inverseIndex(iy).doubleMid
+      )
+    }
+    var i = 0L
+    for (idxY <- idxY0 - 1 to idxY1 + 1) {
+      val y = latitude.inverseIndex(idxY).doubleMid
+      for (idxX <- idxX0 - 1 to idxX1 + 1) {
+        val x = longitude.inverseIndex(idxX).doubleMid
+        val idx = curve.index(OrdinalVector(idxX, idxY))
+        val (lastx, lasty) = getLatLon(idx - 1L)
+        pw3.println(Seq(
+          i, idxY, y, idxX, x, idx, lastx, lasty,
+          s"LINESTRING($lastx $lasty, $x $y)"
+        ).mkString("\t"))
+        i = i + 1L
+      }
+    }
+
+    pw3.close()
     pw2.close()
     pw.close()
 
