@@ -3,7 +3,7 @@ package org.eichelberger.sfc.examples.composition.contrast
 import java.io.{FileWriter, File, BufferedWriter, PrintWriter}
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.{GenericTesting, DefaultDimensions, ComposedCurve}
+import org.eichelberger.sfc.{Dimension, GenericTesting, DefaultDimensions, ComposedCurve}
 import org.eichelberger.sfc.SpaceFillingCurve._
 import org.eichelberger.sfc.examples.composition.contrast._
 import org.joda.time.{Months, DateTime, DateTimeZone}
@@ -22,7 +22,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
   object TestLevels extends Enumeration {
     type TestLevel = Value
-    val Small, Medium, Large = Value
+    val Debug, Small, Medium, Large = Value
   }
   import TestLevels._
   val testLevel = Small
@@ -31,17 +31,66 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
   case class MinMax[T](min: T, max: T)
 
+  // ensure that all of this discretizing-dimensions share the SAME precision
+  val dimLong = DefaultDimensions.createLongitude(10L)
+  val dimLat = DefaultDimensions.createLatitude(10L)
+  val dimDate = DefaultDimensions.createDateTime(10L)
+  val dimAlt = DefaultDimensions.createDimension("z", 0.0, 50000.0, 10L)
+
+  def discretize[T](value: T, dim: Dimension[T]): (T, T) = {
+    val idx = dim.index(value)
+    val cell = dim.inverseIndex(idx)
+    (cell.min, cell.max)
+  }
+
+  def getAllMissingVariants(point:  XYZTPoint, cellX: Dimension[Double], cellY: Dimension[Double], cellZ: Dimension[Double], cellT: Dimension[DateTime]): Seq[(XYZTPoint, Cell, String)] = {
+    combinationsIterator(OrdinalVector(2, 2, 2, 2)).map(combination => {
+      (
+        point,
+        Cell(Seq(
+          if (combination(0) == 0L) dimLong else cellX,
+          if (combination(1) == 0L) dimLat  else cellY,
+          if (combination(2) == 0L) dimAlt  else cellZ,
+          if (combination(3) == 0L) dimDate else cellT
+        )),
+        (if (combination(0) == 0L) "-" else "X") +
+          (if (combination(1) == 0L) "-" else "Y") +
+          (if (combination(2) == 0L) "-" else "Z") +
+          (if (combination(3) == 0L) "-" else "T")
+        )
+    }).toSeq
+  }
+
+  def getOneMissingVariants(point:  XYZTPoint, cellX: Dimension[Double], cellY: Dimension[Double], cellZ: Dimension[Double], cellT: Dimension[DateTime]): Seq[(XYZTPoint, Cell, String)] = {
+    Seq(
+      (point, Cell(Seq(cellX, cellY, cellZ, cellT)), "XYZT"),
+      (point, Cell(Seq(cellX, cellY, cellZ, dimDate)), "XYZ-"),
+      (point, Cell(Seq(cellX, cellY, dimAlt, cellT)), "XY-T"),
+      (point, Cell(Seq(cellX, dimLat, cellZ, cellT)), "X-ZT"),
+      (point, Cell(Seq(dimLong, cellY, cellZ, cellT)), "-YZT"),
+      (point, Cell(Seq(dimLong, dimLat, dimAlt, dimDate)), "----")
+    )
+  }
+
+  def getAllOrNothingVariants(point:  XYZTPoint, cellX: Dimension[Double], cellY: Dimension[Double], cellZ: Dimension[Double], cellT: Dimension[DateTime]): Seq[(XYZTPoint, Cell, String)] = {
+    Seq(
+      (point, Cell(Seq(cellX, cellY, cellZ, cellT)), "XYZT"),
+      (point, Cell(Seq(dimLong, dimLat, dimAlt, dimDate)), "----")
+    )
+  }
+
   // standard test suite of points and queries
   val n = testLevel match {
+    case Debug  =>    1
     case Small  =>   10
     case Medium =>  100
     case Large  => 1000
   }
-  val pointQueryPairs: Seq[(XYZTPoint, Cell)] = {
+  val pointQueryPairs: Seq[(XYZTPoint, Cell, String)] = {
     val prng = new Random(5771L)
     val MinDate = new DateTime(2010, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC"))
     val MaxDate = new DateTime(2014, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
-    (1 to n).map(i => {
+    (1 to n).flatMap(i => {
       // construct the point
       val x = Math.min(180.0, Math.max(-180.0, -180.0 + 360.0 * prng.nextDouble()))
       val y = Math.min(90.0, Math.max(-90.0, -90.0 + 180.0 * prng.nextDouble()))
@@ -50,22 +99,34 @@ class StackingVariantsTest extends Specification with LazyLogging {
       val t = new DateTime(ms, DateTimeZone.forID("UTC"))
       val point = XYZTPoint(x, y, z, t)
       // construct a query that contains this point
-      val x0 = Math.min(179.0, Math.floor(x))
-      val y0 = Math.min(89.0, Math.floor(y))
-      val z0 = Math.min(49000.0, 1000.0 * Math.floor(z / 1000.0))
-      val t0 = new DateTime(t.getYear, t.getMonthOfYear, 1, 0, 0, 0, DateTimeZone.forID("UTC"))
-      val cell = Cell(Seq(
-        DefaultDimensions.createDimension("x", x0, x0 + 1.0, 1L),
-        DefaultDimensions.createDimension("y", y0, y0 + 1.0, 1L),
-        DefaultDimensions.createDimension("z", z0, z0 + 1000.0, 1L),
-        DefaultDimensions.createDateTime(t0, t0.plus(Months.months(1)), 1L)
-      ))
-      // return this pair
-      (point, cell)
+      // (discretized to equivalent precision)
+      val (x0: Double, x1: Double) = discretize(x, dimLong)
+      val (y0: Double, y1: Double) = discretize(y, dimLat)
+      val (z0: Double, z1: Double) = discretize(z, dimAlt)
+      val (t0: DateTime, t1: DateTime) = discretize(t, dimDate)
+      val cellX = DefaultDimensions.createDimension("x", x0, x1, 0L)
+      val cellY = DefaultDimensions.createDimension("y", y0, y1, 0L)
+      val cellZ =  DefaultDimensions.createDimension("z", z0, z1, 0L)
+      val cellT = DefaultDimensions.createDateTime(t0, t1, 0L)
+      testLevel match {
+        case Medium | Small =>
+          // only report the combinations in which exactly one dimension is missing
+          getOneMissingVariants(point, cellX, cellY, cellZ, cellT)
+        case Large =>
+          // return the combinations with (and without) queries per dimension
+          val allEntries = getAllMissingVariants(point, cellX, cellY, cellZ, cellT)
+          if (i == 1) allEntries else allEntries.tail
+        case _ =>
+          // all or nothing
+          getAllOrNothingVariants(point, cellX, cellY, cellZ, cellT)
+      }
     })
   }
   val points: Seq[XYZTPoint] = pointQueryPairs.map(_._1)
   val cells: Seq[Cell] = pointQueryPairs.map(_._2)
+  val labels: Seq[String] = pointQueryPairs.map(_._3)
+
+  val uniqueLabels = labels.toSet.toSeq
 
   def verifyRoundTrip(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
     val (_, msElapsed) = time(() => {
@@ -89,53 +150,65 @@ class StackingVariantsTest extends Specification with LazyLogging {
   }
 
   def verifyQueryRanges(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
-    var totalCells = 0L
-    var totalRanges = 0L
-    var totalSpan = 0L
-
-    val (_, msElapsed) = time(() => {
-      var i = 0
-      while (i < n) {
+    // conduct all queries against this curve
+    val results: List[(String, Seq[OrdinalPair], Long)] = pointQueryPairs.map{
+      case (point, rawCell, label) =>
         val cell =
-          if (curve.numLeafNodes == 4) cells(i)
-          else Cell(cells(i).dimensions.take(2) ++ cells(i).dimensions.takeRight(1))
-        val ranges = curve.getRangesCoveringCell(cell).toList
-        totalRanges = totalRanges + ranges.size
-        totalCells = totalCells + ranges.map(_.size).sum
-        val extent: (Long, Long) = ranges.foldLeft((0L, 0L))((acc, range) => acc match {
-          case (minAcc, maxAcc) =>
-            (Math.min(minAcc, range.min), Math.max(maxAcc, range.max))
+          if (curve.numLeafNodes == 4) rawCell
+          else Cell(rawCell.dimensions.take(2) ++ rawCell.dimensions.takeRight(1))
+
+        //@TODO debug!
+        //println(s"RANGES TEST:  ${curve.name}, $label, ${curve.M}, $cell")
+
+        val (ranges, msElapsed) = time(() => {
+          val itr = curve.getRangesCoveringCell(cell)
+          val list = itr.toList
+          list
         })
-        totalSpan = totalSpan + (extent._2 - extent._1 + 1)
-        if (print) println(s"[${curve.name} verify query ranges] ${points(i)} -> $cell -> ${ranges.size} ranges")
-        i = i + 1
-      }
-    })
+        (label, ranges, msElapsed)
+    }.toList
 
-    val seconds = msElapsed.toDouble / 1000.0
-    val avgRanges = totalRanges.toDouble / n.toDouble
-    val avgCells = totalCells.toDouble / n.toDouble
-    val avgCellsPerSecond = avgCells / seconds
-    val avgCellsPerRange = avgCells / avgRanges
-    val avgRangeDensity = totalCells / totalSpan
-    val avgScore = avgCellsPerRange * avgCellsPerSecond
+    // aggregate by label
+    val aggregates = results.groupBy(_._1)
+    aggregates.foreach {
+      case (aggLabel, group) =>
+        var totalCells = 0L
+        var totalRanges = 0L
+        var totalMs = 0L
 
-    println(s"${curve.name},queries,${curve.M},$n,${curve.numLeafNodes},$avgRanges,$avgCells,$seconds")
-    pw.println(Seq(
-      curve.name,
-      "ranges",
-      curve.M,
-      n,
-      curve.numLeafNodes,
-      curve.plys,
-      avgRanges,
-      avgCells,
-      avgCellsPerSecond,
-      avgCellsPerRange,
-      avgRangeDensity,
-      avgScore,
-      seconds
-    ).mkString("\t"))
+        group.foreach {
+          case (_, ranges, ms) =>
+            totalRanges = totalRanges + ranges.size
+            totalCells = totalCells + ranges.map(_.size).sum
+            totalMs = totalMs + ms
+        }
+
+        val m = group.size.toDouble
+        val avgRanges = totalRanges.toDouble / m
+        val avgCells = totalCells.toDouble / m
+        val seconds = totalMs.toDouble / 1000.0
+        val avgCellsPerSecond = totalCells / seconds
+        val avgCellsPerRange = totalRanges / seconds
+        val avgScore = avgCellsPerSecond * avgCellsPerRange
+
+        val data = Seq(
+          curve.name,
+          "ranges",
+          aggLabel,
+          curve.M,
+          n,
+          curve.numLeafNodes,
+          curve.plys,
+          avgRanges,
+          avgCells,
+          avgCellsPerSecond,
+          avgCellsPerRange,
+          avgScore,
+          seconds
+        )
+        println(data.mkString(","))
+        pw.println(data.mkString("\t"))
+    }
 
     true
   }
@@ -147,8 +220,8 @@ class StackingVariantsTest extends Specification with LazyLogging {
     pw.println("order\tidx_min\tidx_max\tnum_cells\twkt")
 
     val queryCell: Cell = Cell(Seq(
-      DefaultDimensions.createDimension("x", bboxCville._1, bboxCville._3, 1L),
-      DefaultDimensions.createDimension("y", bboxCville._2, bboxCville._4, 1L)
+      DefaultDimensions.createDimension("x", bboxCville._1, bboxCville._3, 0L),
+      DefaultDimensions.createDimension("y", bboxCville._2, bboxCville._4, 0L)
     ))
     val sparse = collection.mutable.HashMap[OrdinalVector, OrdinalNumber]()
     var maxIdx = 0L
@@ -217,10 +290,9 @@ class StackingVariantsTest extends Specification with LazyLogging {
     true
   }
 
-  def perCurveTestSuite(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
-    verifyRoundTrip(curve, pw, print) &&
+  def perCurveTestSuite(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean =
+    //verifyRoundTrip(curve, pw, print) &&  //@TODO restore!
       verifyQueryRanges(curve, pw, print)
-  }
 
   "the various compositions" should {
     "print scaling results" >> {
@@ -228,6 +300,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
       pw.println(Seq(
         "curve",
         "test.type",
+        "label",
         "precision",
         "replications",
         "dimensions",
@@ -236,12 +309,12 @@ class StackingVariantsTest extends Specification with LazyLogging {
         "avg.cells",
         "cells.per.second",
         "cells.per.range",
-        "range.density",
         "score",
         "seconds"
       ).mkString("\t"))
 
       val (bitsLow, bitsHigh) = testLevel match {
+        case Debug  => (40, 40)
         case Small  => (20, 30)
         case Medium => (25, 35)
         case Large  => (20, 40)
@@ -268,6 +341,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
       1 must equalTo(1)
     }
+
 
     "dump query ranges to CSV" >> {
       for (totalPrecision <- 21 to 35 by 2) {

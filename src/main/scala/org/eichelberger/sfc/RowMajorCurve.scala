@@ -48,6 +48,10 @@ case class RowMajorCurve(precisions: OrdinalVector) extends SpaceFillingCurve wi
   }
 
   def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
+    // quick check for "everything"
+    if (isEverything(query))
+      return Seq(OrdinalPair(0, size - 1L)).iterator
+
     // naive:  assume none of the dimensions is full-range
     // (if they are, the range-consolidation should fix it, albeit more slowly
     // than if we handled it up front)

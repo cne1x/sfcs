@@ -246,11 +246,8 @@ object SpaceFillingCurve {
     i
   }
 
-  def binDelta(x: OrdinalNumber, maxBits: OrdinalNumber, bits: OrdinalNumber): OrdinalNumber = {
-    val mask = (1L << bits) - 1L
-    mask - (x & mask)
-  }
-
+  // identifies the full bit-levels (for one dimension) covering
+  // the span from the coordinate's minimum to its maximum
   def bitCoverages(coords: OrdinalPair, maxBits: OrdinalNumber): Seq[OrdinalPair] = {
     if (coords.min > coords.max) return Seq[OrdinalPair]()
     if (coords.max == coords.min) return Seq(OrdinalPair(coords.min, 1))
@@ -258,23 +255,33 @@ object SpaceFillingCurve {
       bitCoverages(OrdinalPair(coords.min + 1L, coords.max), maxBits)
 
     val span = coords.max - coords.min
+    val deltas = ~coords.min
 
     // find the largest group
     var i = maxBits
-    var b = binDelta(coords.min, maxBits, i)
-    var unfound = b >= span
-    while (i >= 1 && unfound) {
+    var b = deltas & ((1L << i) - 1L)
+    while (i >= 1 && b > span) {
       i = i - 1
-      b = binDelta(coords.min, maxBits, i)
-      unfound = b >= span
+      b = deltas & ((1L << i) - 1L)
     }
+    b = b + 1L
 
-    val lowEnd = onBitsIn(b + 1L) match {
+    require((b - 1) <= span, s"b - 1(${b - 1}) > span ($span)")
+
+    val lowEnd = onBitsIn(b) match {
       case 0 => throw new Exception(s"Unexpected case for b $b in bitCoverages($coords, $maxBits)")
-      case 1 => Seq(OrdinalPair(coords.min, b + 1L))  // entire block
-      case _ => bitCoverages(OrdinalPair(coords.min, coords.min + b), maxBits)
+      case 1 => Seq(OrdinalPair(coords.min, b))  // entire block
+      case _ =>
+        while (b == (span + 1) && i >= 1) {
+          i = i - 1
+          b = deltas & ((1L << i) - 1L)
+        }
+        require((b - 1L) != span, s"Infinite recursion!")
+        bitCoverages(OrdinalPair(coords.min, coords.min + b - 1L), maxBits)
     }
-    val highEnd = bitCoverages(OrdinalPair(coords.min + b + 1, coords.max), maxBits)
+    val highEnd =
+      if (b > span) Seq[OrdinalPair]()
+      else bitCoverages(OrdinalPair(coords.min + b, coords.max), maxBits)
 
     lowEnd ++ highEnd
   }
@@ -321,6 +328,20 @@ object SpaceFillingCurve {
     def inverseIndex(ordinal: OrdinalNumber): OrdinalVector
 
     def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair]
+
+    def isEverything(query: Query): Boolean = {
+      var i = 0
+      val qdr = query.rangesPerDim
+      while (i < n) {
+        val qr = qdr(i)
+        if (qr.size != 1) return false
+        if (qr.toSeq.head != OrdinalPair(0, sizes(i) - 1L)) return false
+        i = i + 1
+      }
+
+      // if you get here, you satisfied all dimensions completely
+      true
+    }
   }
 
   trait QuadTreeCurve extends SpaceFillingCurve {
@@ -329,6 +350,10 @@ object SpaceFillingCurve {
     // be very efficient, so the specific curves should
     // override this with their own, curve-specific versions
     def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
+      // quick check for "everything"
+      if (isEverything(query))
+        return Seq(OrdinalPair(0, size - 1L)).iterator
+
       // for each dimension, partition the ranges into bin pairs
       val covers = (0 until n).par.map(dimension => {
         val dimRanges: OrdinalRanges = query.toSeq(dimension)
@@ -384,7 +409,7 @@ object SpaceFillingCurve {
                 if (zeroOne == 0L) cubeDimRange.min else cubeDimRange.max
             }.toOrdinalVector
           })
-          val indexes = corners.map(index)
+          val indexes = corners.toSeq.par.map(index)
           // pick out the (min, max) among all of these index values
           val extrema = indexes.foldLeft((Long.MaxValue, Long.MinValue))((acc, idx) => acc match {
             case (minSoFar, maxSoFar) =>

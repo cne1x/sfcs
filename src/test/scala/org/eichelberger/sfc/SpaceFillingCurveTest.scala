@@ -69,17 +69,6 @@ class SpaceFillingCurveTest extends Specification with LazyLogging {
     }
   }
 
-  "binary deltas" >> {
-    binDelta(6, 4, 1) must equalTo(1)
-    binDelta(6, 4, 2) must equalTo(1)
-    binDelta(6, 4, 3) must equalTo(1)
-    binDelta(6, 4, 4) must equalTo(9)
-    binDelta(12, 4, 1) must equalTo(1)
-    binDelta(12, 4, 2) must equalTo(3)
-    binDelta(12, 4, 3) must equalTo(3)
-    binDelta(12, 4, 4) must equalTo(3)
-  }
-
   "bit coverages" >> {
     def testCoverages(range: OrdinalPair, precision: OrdinalNumber, expected: Seq[OrdinalPair]): Boolean = {
       val result = bitCoverages(range, precision)
