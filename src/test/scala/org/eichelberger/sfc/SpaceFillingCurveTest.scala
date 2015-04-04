@@ -97,7 +97,7 @@ class SpaceFillingCurveTest extends Specification with LazyLogging {
       val n = 2
       val z = new ZCurve(OrdinalVector(n, n))
       val c = CompactHilbertCurve(OrdinalVector(n, n))
-      val r = RectilinearCurve(OrdinalVector(n, n))
+      val r = RowMajorCurve(OrdinalVector(n, n))
 
       def d0(sfc: SpaceFillingCurve, name: String): Double = {
         val data = for (i <- 0 to sfc.size.toInt - 2) yield {

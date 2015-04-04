@@ -5,8 +5,8 @@ import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
 
-object RectilinearCurve {
-  def apply(x: OrdinalNumber*): RectilinearCurve = new RectilinearCurve(OrdinalVector(x: _*))
+object RowMajorCurve {
+  def apply(x: OrdinalNumber*): RowMajorCurve = new RowMajorCurve(OrdinalVector(x: _*))
 }
 
 /**
@@ -18,8 +18,8 @@ object RectilinearCurve {
  * significant bits, and the least significant bits bring up
  * the end.
  */
-case class RectilinearCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
-  import org.eichelberger.sfc.RectilinearCurve._
+case class RowMajorCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
+  import org.eichelberger.sfc.RowMajorCurve._
 
   val name = "R"
 

@@ -4,7 +4,7 @@ import java.io.{FileOutputStream, BufferedOutputStream, PrintStream}
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.SpaceFillingCurve._
-import org.eichelberger.sfc.{RectilinearCurve, CompactHilbertCurve, ZCurve}
+import org.eichelberger.sfc.{RowMajorCurve, CompactHilbertCurve, ZCurve}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
@@ -54,9 +54,9 @@ class RenderSourceTest extends Specification with LazyLogging {
       1 must equalTo(1)
     }
 
-    "be able to dump a 2D rectilinear curve to screen" >> {
-      val sfc = new RectilinearCurve(OrdinalVector(4, 4)) with RenderSource {
-        def getCurveName = "Rectilinear"
+    "be able to dump a 2D rowmajor curve to screen" >> {
+      val sfc = new RowMajorCurve(OrdinalVector(4, 4)) with RenderSource {
+        def getCurveName = "Row-major"
       }
       val screenTarget = new ScreenRenderTarget
       sfc.render(screenTarget)
@@ -65,8 +65,8 @@ class RenderSourceTest extends Specification with LazyLogging {
     }
 
     "be able to dump a 3D Z-curve to screen" >> {
-      val sfc = new RectilinearCurve(OrdinalVector(3, 3, 3)) with RenderSource {
-        def getCurveName = "Rectilinear"
+      val sfc = new RowMajorCurve(OrdinalVector(3, 3, 3)) with RenderSource {
+        def getCurveName = "Row-major"
       }
       val screenTarget = new ScreenRenderTarget
       sfc.render(screenTarget)
@@ -93,11 +93,11 @@ class RenderSourceTest extends Specification with LazyLogging {
 
       new ZCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Z" }.render(dotTarget("z(4,4)", 8))
       new CompactHilbertCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Compact Hilbert" }.render(dotTarget("h(4,4)", 8))
-      new RectilinearCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Rectilinear" }.render(dotTarget("r(4,4)", 8))
+      new RowMajorCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Row-major" }.render(dotTarget("r(4,4)", 8))
 
       new ZCurve(OrdinalVector(3, 5)) with RenderSource { def getCurveName = "Z" }.render(dotTarget("z(3,5)", 8))
       new CompactHilbertCurve(OrdinalVector(3, 5)) with RenderSource { def getCurveName = "Compact Hilbert" }.render(dotTarget("h(3,5)", 8))
-      new RectilinearCurve(OrdinalVector(3, 5)) with RenderSource { def getCurveName = "Rectilinear" }.render(dotTarget("r(3,5)", 8))
+      new RowMajorCurve(OrdinalVector(3, 5)) with RenderSource { def getCurveName = "Row-major" }.render(dotTarget("r(3,5)", 8))
 
       1 must equalTo(1)
     }

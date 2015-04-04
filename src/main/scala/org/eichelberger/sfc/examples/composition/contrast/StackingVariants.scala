@@ -6,7 +6,7 @@ import org.eichelberger.sfc.utils.Lexicographics.Lexicographic
 import org.joda.time.DateTime
 
 object BaseCurves {
-  val Rectilinear = 0
+  val RowMajor    = 0
   val ZOrder      = 1
   val Hilbert     = 2
 
@@ -18,7 +18,7 @@ object BaseCurves {
 
   def rawNWayCurve(combination: OrdinalVector, precisions: OrdinalNumber*): SpaceFillingCurve =
     combination.toSeq.last match {
-      case 0 => RectilinearCurve(precisions:_*)
+      case 0 => RowMajorCurve(precisions:_*)
       case 1 => ZCurve(precisions:_*)
       case 2 => CompactHilbertCurve(precisions:_*)
     }

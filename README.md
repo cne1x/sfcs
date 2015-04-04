@@ -81,15 +81,15 @@ a single indexed space (directly).  Instead, tier the space-filling curves
 like this:
 
 1.  2D is CompactHilbert(longitude, latitude) -> index_1
-1.  3-D is Rectilinear(index_1, date time) -> index_2
-1.  4-D is Rectilinear(index_2, altitude) -> index_3
-1.  n-D is Rectilinear(index_{n-2}, d_n) -> index_{n-1}
+1.  3-D is Row-major(index_1, date time) -> index_2
+1.  4-D is Row-major(index_2, altitude) -> index_3
+1.  n-D is Row-major(index_{n-2}, d_n) -> index_{n-1}
 
 You will note that this nesting is really just function composition:  Lower-order
 curves are incorporated into higher-order curves as a single new dimension.
 The fancy, sinuous curves are only used to merge any two dimensions that ought
 to be treated as a single query-entity (often, this really just means, "geometry");
-all of the other dimensions that are stacked on are stacked using a rectilinear
+all of the other dimensions that are stacked on are stacked using a row-major
 curve that facilitates range queries directly.  Because all of the space-filling
 curves are invertible, the n-dimensional index allows you to peel the onion all
 the way back through all of the partitions that participated without any loss
@@ -115,7 +115,7 @@ Here are some preliminary numbers for fun:
 |R(X,Y,Z,T)|3489.76|0.512|
 |Z(X,Y,Z,T)|3595.50|1.156|
 
-Here, "C", "Z", and "R" stand for curves (compact hilbert, Z-order, and rectilinear)
+Here, "C", "Z", and "R" stand for curves (compact hilbert, Z-order, and row-major)
 when used as a function name, and "X", "Y", "Z", and "T" are dimensions (longitude,
 latitude, altitude, and date-time).
 
@@ -143,7 +143,7 @@ largely a first-draft translation of the algorithms described in the Hamilton pa
 #### Visual examples of delivered query ranges
 
 Given a bounding box that surrounds Charlotesville, VA, three simple 2D curves --
-rectilinear, Z-order, and Hilbert -- 
+row-major, Z-order, and Hilbert -- 
 were all asked to identify their index ranges that would cover the entire query.  Each
 contiguous index range is drawn separately, with the color roughly
 proportional to how many cells are contained in the contiguous range.
@@ -154,7 +154,7 @@ proportional to how many cells are contained in the contiguous range.
 
 Again, most of what this shows is what was summarized in the preceding section:
 Hilbert does a better job of capturing larger, contiguous ranges, whereas it
-becomes simple to see why the rectilinear curve is a faster planner.
+becomes simple to see why the row-major curve is a faster planner.
 
 #### Compactness v. throughput
 
@@ -164,7 +164,7 @@ becomes simple to see why the rectilinear curve is a faster planner.
 
 These are the space-filling curves that have already been encoded:
 
-1.  rectilinear:  This is a naive curve roughly equivalent to row-major ordering.
+1.  row-major:  This is a naive curve roughly equivalent to row-major ordering.
 1.  z-order:  This curve interleaves bits of the input ordinal numbers, which means that not all
     combinations of input precisions are valid.  For example, having a two-dimensional space in
     which the first dimension uses 10 bits and the second uses 2 bits is not a good fit for a

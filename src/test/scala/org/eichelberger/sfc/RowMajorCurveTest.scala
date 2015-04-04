@@ -7,15 +7,15 @@ import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
 
 @RunWith(classOf[JUnitRunner])
-class RectilinearCurveTest extends Specification with GenericCurveValidation with LazyLogging {
+class RowMajorCurveTest extends Specification with GenericCurveValidation with LazyLogging {
   sequential
 
-  def curveName = "RectilinearCurve"
+  def curveName = "RowmajorCurve"
 
   def createCurve(precisions: OrdinalNumber*): SpaceFillingCurve =
-    RectilinearCurve(precisions.toOrdinalVector)
+    RowMajorCurve(precisions.toOrdinalVector)
 
-  "rectilinear space-filling curves" should {
+  "rowmajor space-filling curves" should {
     "satisfy the ordering constraints" >> {
       timeTestOrderings() must beTrue
     }
@@ -26,7 +26,7 @@ class RectilinearCurveTest extends Specification with GenericCurveValidation wit
       val ranges = sfc.getRangesCoveringQuery(query).toList
 
       for (i <- 0 until ranges.size) {
-        println(s"[rectilinear ranges:  query $query] range $i = ${ranges(i)}")
+        println(s"[rowmajor ranges:  query $query] range $i = ${ranges(i)}")
       }
 
       ranges(0) must equalTo(OrdinalPair(9, 11))
