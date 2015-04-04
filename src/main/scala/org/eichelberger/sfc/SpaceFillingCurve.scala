@@ -291,6 +291,7 @@ object SpaceFillingCurve {
       dimensions.zip(values).forall {
         case (dim, value) => dim.containsAny(value)
       }
+    def apply(dim: Int) = dimensions(dim)
   }
 
   trait SpaceFillingCurve extends Composable {
