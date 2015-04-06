@@ -188,8 +188,12 @@ class StackingVariantsTest extends Specification with LazyLogging {
         val avgCells = totalCells.toDouble / m
         val seconds = totalMs.toDouble / 1000.0
         val avgCellsPerSecond = totalCells / seconds
+        val avgRangesPerSecond = totalRanges / seconds
         val avgCellsPerRange = totalRanges / seconds
+        val avgSecondsPerCell = seconds / totalCells
+        val avgSecondsPerRange = seconds / totalRanges
         val avgScore = avgCellsPerSecond * avgCellsPerRange
+        val avgAdjScore = avgCellsPerSecond * Math.log(1.0 + avgCellsPerRange)
 
         val data = Seq(
           curve.name,
@@ -203,7 +207,10 @@ class StackingVariantsTest extends Specification with LazyLogging {
           avgCells,
           avgCellsPerSecond,
           avgCellsPerRange,
+          avgSecondsPerCell,
+          avgSecondsPerRange,
           avgScore,
+          avgAdjScore,
           seconds
         )
         println(data.mkString(","))
@@ -309,7 +316,10 @@ class StackingVariantsTest extends Specification with LazyLogging {
         "avg.cells",
         "cells.per.second",
         "cells.per.range",
+        "seconds.per.cell",
+        "seconds.per.range",
         "score",
+        "adj.score",
         "seconds"
       ).mkString("\t"))
 

@@ -105,13 +105,17 @@ compactness_vs_throughput <- function() {
 }
 
 # Generates the distribution of simple scores, ordering
-# them from high to low.
+# them from high to low, having first grouped the runs
+# by the curve topology.  The mean score per topology
+# is reported.
 
-score.plot <- function() {
+score.plot <- function(score.label, score.column) {
   clean.data <- function(df.raw) {
     max.precision <- max(df.raw$precision)
-    df.nums <- subset(df.raw, df.raw$score != Inf & df.raw$precision == max.precision)
-    idxs <- order(df.nums$score, decreasing=TRUE)
+    df.nums <- subset(df.raw, df.raw[,score.column] != Inf & df.raw$precision == max.precision)
+    df.nums$use.score <- df.nums[,score.column]
+    df.nums <- aggregate(df.nums, list(curve = df.nums$curve), mean)
+    idxs <- order(df.nums$use.score, decreasing=TRUE)
     df.clean <- df.nums[idxs,]
     df.clean$x <- 1:nrow(df.clean)
     return(df.clean)
@@ -120,19 +124,31 @@ score.plot <- function() {
   mk.chart <- function(df.raw, width, height) {
     df <- clean.data(df.raw)
     dims <- dimensions.string(df)
-    y.max <- 10 ^ (floor(log10(max(df$score))) + 3.0)
-    y.min <- 10 ^ (floor(log10(min(df$score))))
+    
+    y.max <- 10 ^ (floor(log10(max(df$use.score))) + 3.0)
+    y.min <- 10 ^ (floor(log10(min(df$use.score))))
+    
+    print(df)
+    print(dims)
+    print(c(y.min, y.max))
+    
     ggplot() +
-      ggtitle(paste(dims, "curve scores at", max(df$precision), "bits")) +
+      ggtitle(paste(dims, "curve", score.label, "scores at", max(df$precision), "bits, grouped by topology")) +
       scale_x_continuous(limits = c(0, nrow(df)+2, breaks=NULL)) +
       scale_y_log10(limits = c(y.min, y.max)) +
-      geom_point(data=df, aes(x=x, y=score, group=full.name, color=curve), show_guide=FALSE) +
-      geom_text(data=df, aes(legend=FALSE, x=x, y=score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
-    ggsave(filename=paste("/tmp/curves-", dims, "-scores.png", sep=""), width=width, height=height, units="in")
+      xlab(NULL) + ylab(paste(score.label, "score")) +
+      geom_point(data=df, aes(x=x, y=use.score, group=curve, color=curve), show_guide=FALSE) +
+      geom_text(data=df, aes(legend=FALSE, x=x, y=use.score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
+    ggsave(filename=paste("/tmp/curves-", dims, "-", score.label, "-scores.png", sep=""), width=width, height=height, units="in")
   }
   
   mk.chart(q3d, 8.0, 5.0)
   mk.chart(q4d, 20.0, 5.0)
+}
+
+
+range.study.plot <- function() {
+  "???"
 }
 
 
@@ -143,5 +159,6 @@ score.plot <- function() {
 ####################################################################
 
 #range.counts_vs_time
-compactness_vs_throughput()
-score.plot()
+#compactness_vs_throughput()
+score.plot("adjusted", "adj.score")
+score.plot("raw", "score")
