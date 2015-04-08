@@ -147,8 +147,44 @@ score.plot <- function(score.label, score.column) {
 }
 
 
-range.study.plot <- function() {
-  "???"
+range.study.plot <- function(invert = FALSE) {
+  mk.chart <- function(df.raw, width, height) {
+    df <- df.raw
+    df$top.curve_f = factor(df$top.curve, levels=c("R", "Z", "H"), ordered=TRUE)
+    df$plys_f = factor(df$plys, levels=c(2, 3, 4), labels=c("2-ply", "3-ply", "4-ply"), ordered=TRUE)
+    df$label_f = factor(df$label, levels=c("----", "-YZT", "X-ZT", "XY-T", "XYZ-", "XYZT"), ordered=TRUE)
+    dims <- dimensions.string(df)
+
+    df$y = rep(0.0, nrow(df))
+    for (i in 1:nrow(df)) {
+      df$y[i] <- ifelse(invert, 1.0 / max(0.000001, df$seconds[i]), df$seconds[i])
+    }
+      
+    print(df)
+    
+    x.range <- range(df$avg.ranges)
+    y.range <- range(df$y)
+    if (invert) y.range <- rev(y.range)
+    ref <- data.frame(x=x.range, y=y.range)
+    print(ref)
+    
+    y.label <- ifelse(invert, "inverse seconds", "seconds")
+    graph.name <- ifelse(invert, "ranges-inv", "ranges")
+    
+    ggplot() +
+      ggtitle(paste(dims, "range study")) +
+      scale_x_log10() +
+      scale_y_log10() +
+      xlab("number of ranges") + 
+      ylab(y.label) +
+      geom_line(data=ref, aes(x=x, y=y), lty="dotted", size=0.2) +
+      geom_line(data=df, aes(x=avg.ranges, y=y, group=curve, color=curve), show_guide=FALSE) +
+      facet_grid(label_f ~ top.curve_f + plys_f)
+    ggsave(filename=paste("/tmp/", graph.name, "-", dims, ".png", sep=""), width=width, height=height, units="in")
+  }
+  
+  mk.chart(q3d, 8.0, 5.0)
+  mk.chart(q4d, 18.0, 12.0)
 }
 
 
@@ -160,5 +196,7 @@ range.study.plot <- function() {
 
 #range.counts_vs_time
 #compactness_vs_throughput()
-score.plot("adjusted", "adj.score")
-score.plot("raw", "score")
+#score.plot("adjusted", "adj.score")
+#score.plot("raw", "score")
+range.study.plot(FALSE)
+range.study.plot(TRUE)
