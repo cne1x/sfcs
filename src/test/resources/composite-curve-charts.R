@@ -24,7 +24,7 @@ df1 <- read.csv("/tmp/composed-curves.tsv", sep="\t")
 queries <- subset(df1, df1[,2] == "ranges")
 
 # create a new column that is the curve name plus parameters
-queries$full.name <- paste(queries$curve, ": ", queries$precision, " bits", sep="")
+queries$full.name <- paste(queries$curve, " ", queries$label, ": ", queries$precision, " bits", sep="")
 
 # identify the top-level curve being used:
 #   H:  (Compact) Hilbert
@@ -34,6 +34,11 @@ queries$top.curve <- substr(queries$curve, 1, 1)
 
 # point-size used for representing precision
 queries$ptsize <- sqrt(queries$precision)
+
+# create factors for chart labels
+queries$top.curve_f = factor(queries$top.curve, levels=c("R", "Z", "H"), ordered=TRUE)
+queries$plys_f = factor(queries$plys, levels=c(2, 3, 4), labels=c("2-ply", "3-ply", "4-ply"), ordered=TRUE)
+queries$label_f = factor(queries$label, levels=c("----", "---", "-YZT", "-YT", "X-ZT", "X-T", "XY-T", "XY-", "XYZ-", "XYT", "XYZT"), ordered=TRUE)
 
 # filter out the 3D and 4D queries separately
 q3d <- subset(queries, dimensions==3)
@@ -53,27 +58,6 @@ dimensions.string <- function(df) {
   paste(paste(sort(unique(df$dimensions)), collapse=","), "D", sep="")
 }
 
-# These charts show how different composites generate different
-# numbers of ranges at different rates.
-
-range.counts_vs_time <- function() {
-  ggplot() + 
-    ggtitle("4D space-filling curves:  range counts v. planning time") +
-    ylab("mean planning time (seconds)") + xlab("mean number of contiguous ranges") +
-    scale_x_log10() + scale_y_log10() +
-    geom_line(data=q4d, aes(x=avgranges, y=seconds, group=curve, color=curve)) +
-    geom_point(data=q4d, aes(x=avgranges, y=seconds, group=curve, color=curve, size=ptsize)) 
-  ggsave(filename="/tmp/curves-4d.png", width=16, height=5, units="in")
-  
-  ggplot() + 
-    ggtitle("3D space-filling curves:  range counts v. planning time") +
-    ylab("mean planning time (seconds)") + xlab("mean number of contiguous ranges") +
-    scale_x_log10() + scale_y_log10() +
-    geom_line(data=q3d, aes(x=avgranges, y=seconds, group=curve, color=curve)) +
-    geom_point(data=q3d, aes(x=avgranges, y=seconds, group=curve, color=curve, size=ptsize)) 
-  ggsave(filename="/tmp/curves-3d.png", width=16, height=5, units="in")
-}
-
 # These charts are meant to illustrate the trade-off between the
 # compactness of the query ranges (on average, how many cells did
 # each range contain) versus throughput (on average, how many total
@@ -85,23 +69,23 @@ range.counts_vs_time <- function() {
 # vertically by the top-level space-filling curve in the composite.
 
 compactness_vs_throughput <- function() {
-  ggplot() +
-    ggtitle("4D space-filling curves:  compactness v. throughput") +
-    xlab("cells per range (compactness)") +
-    ylab("cells per second (throughput)") + 
-    geom_line(data=q4d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve), show_guide=FALSE) +
-    scale_x_log10() + scale_y_log10() +
-    facet_grid(top.curve ~ plys)
-  ggsave(filename="/tmp/curves-4d-prorated.png", width=16, height=5, units="in")
+  mk.chart <- function(df, width.inches, height.inches) {
+    df <- subset(df, df$label != "----" & df$cells.per.second != Inf)
+    df <- aggregate(df[,c("cells.per.range", "cells.per.second")], list(top.curve_f=df$top.curve_f, precision=df$precision, label=df$label, plys_f=df$plys_f, dimensions=df$dimensions), mean)
+    df$series = paste(df$top.curve_f, df$label)
+    dims <- dimensions.string(df)
+    ggplot() +
+      ggtitle(paste(dims, "compactness v. throughput")) +
+      xlab("mean cells per range (compactness)") +
+      ylab("mean cells per second (throughput)") + 
+      geom_line(data=df, aes(x=cells.per.range, y=cells.per.second, group=series, color=series), show_guide=FALSE) +
+      scale_x_log10() + scale_y_log10() +
+      facet_grid(top.curve_f ~ plys_f)
+    ggsave(filename=paste("/tmp/curves-", dims, "-prorated.png", sep=""), width=width.inches, height=height.inches, units="in")
+  }
   
-  ggplot() +
-    ggtitle("3D space-filling curves:  compactness v. throughput") +
-    xlab("cells per range (compactness)") +
-    ylab("cells per second (throughput)") + 
-    geom_line(data=q3d, aes(x=cells.per.range, y=cells.per.second, group=curve, color=curve), show_guide=FALSE) +
-    scale_x_log10() + scale_y_log10() +
-    facet_grid(top.curve ~ plys)
-  ggsave(filename="/tmp/curves-3d-prorated.png", width=16, height=5, units="in")
+  mk.chart(q3d, 16.0, 5.0)
+  mk.chart(q4d, 16.0, 5.0)
 }
 
 # Generates the distribution of simple scores, ordering
@@ -112,12 +96,26 @@ compactness_vs_throughput <- function() {
 score.plot <- function(score.label, score.column) {
   clean.data <- function(df.raw) {
     max.precision <- max(df.raw$precision)
+    df.raw <- subset(df.raw, df.raw$precision == max.precision)
+    score.range <- range(subset(df.raw[,score.column], df.raw[,score.column] != Inf))
+    for (i in 1:nrow(df.raw)) {
+      df.raw[i, score.column] <- ifelse(df.raw[i, score.column] == Inf, score.range[2]*10.0, df.raw[i, score.column])
+    }
     df.nums <- subset(df.raw, df.raw[,score.column] != Inf & df.raw$precision == max.precision)
     df.nums$use.score <- df.nums[,score.column]
-    df.nums <- aggregate(df.nums, list(curve = df.nums$curve), mean)
+    df.nums <- aggregate(df.nums, list(curve = df.nums$curve, label=df.nums$label_f), mean)
     idxs <- order(df.nums$use.score, decreasing=TRUE)
     df.clean <- df.nums[idxs,]
+    df.clean$idx <- 1:nrow(df.clean)
     df.clean$x <- 1:nrow(df.clean)
+    labels <- unique(df.clean$label)
+    for (i in 1:length(labels)) {
+      subs <- subset(df.clean, df.clean$label == labels[i])
+      idxs <- order(subs$use.score, decreasing=TRUE)
+      for (j in 1:nrow(subs)) {
+        df.clean$x[subs$idx[j]] <- idxs[j]
+      }
+    }
     return(df.clean)
   }
   
@@ -128,22 +126,19 @@ score.plot <- function(score.label, score.column) {
     y.max <- 10 ^ (floor(log10(max(df$use.score))) + 3.0)
     y.min <- 10 ^ (floor(log10(min(df$use.score))))
     
-    print(df)
-    print(dims)
-    print(c(y.min, y.max))
-    
     ggplot() +
       ggtitle(paste(dims, "curve", score.label, "scores at", max(df$precision), "bits, grouped by topology")) +
-      scale_x_continuous(limits = c(0, nrow(df)+2, breaks=NULL)) +
+      scale_x_continuous(limits = c(0, range(df$x)[2]+2, breaks=NULL)) +
       scale_y_log10(limits = c(y.min, y.max)) +
       xlab(NULL) + ylab(paste(score.label, "score")) +
       geom_point(data=df, aes(x=x, y=use.score, group=curve, color=curve), show_guide=FALSE) +
-      geom_text(data=df, aes(legend=FALSE, x=x, y=use.score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) 
+      geom_text(data=df, aes(legend=FALSE, x=x, y=use.score, label=curve, angle=45, size=1, hjust=-0.1, vjust=0), show_guide=FALSE) +
+      facet_grid(label ~ .)
     ggsave(filename=paste("/tmp/curves-", dims, "-", score.label, "-scores.png", sep=""), width=width, height=height, units="in")
   }
   
-  mk.chart(q3d, 8.0, 5.0)
-  mk.chart(q4d, 20.0, 5.0)
+  mk.chart(q3d, 10.0, 25.0)
+  mk.chart(q4d, 20.0, 20.0)
 }
 
 
@@ -194,9 +189,8 @@ range.study.plot <- function(invert = FALSE) {
 #
 ####################################################################
 
-#range.counts_vs_time
 #compactness_vs_throughput()
-#score.plot("adjusted", "adj.score")
-#score.plot("raw", "score")
-range.study.plot(FALSE)
-range.study.plot(TRUE)
+score.plot("adjusted", "adj.score")
+score.plot("raw", "score")
+#range.study.plot(FALSE)
+#range.study.plot(TRUE)

@@ -49,7 +49,9 @@ this brings us to the subject of...
 ### Index growth (dimensionality)
 
 As new dimensions need to be indexed, there are two obvious ways this might
-be done:  horizontally and vertically.
+be done:  horizontally and vertically.  (And, of course, there are choices
+between those two extremes, if you have enough dimensions in the top-level
+curve.)
 
 #### Horizontal index growth
 

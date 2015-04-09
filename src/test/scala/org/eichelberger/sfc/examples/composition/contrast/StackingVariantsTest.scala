@@ -25,7 +25,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
     val Debug, Small, Medium, Large = Value
   }
   import TestLevels._
-  val testLevel = Medium
+  val testLevel = Small
 
   case class XYZTPoint(x: Double, y: Double, z: Double, t: DateTime)
 
@@ -165,7 +165,16 @@ class StackingVariantsTest extends Specification with LazyLogging {
           val list = itr.toList
           list
         })
-        (label, ranges, msElapsed)
+
+        // compute a net label (only needed for 3D curves)
+        val netLabel = curve.numLeafNodes match {
+          case 3 => label.take(2) + label.takeRight(1)
+          case 4 => label
+          case _ =>
+            throw new Exception(s"Something went wrong:  ${curve.numLeafNodes} dimensions found")
+        }
+
+        (netLabel, ranges, msElapsed)
     }.toList
 
     // aggregate by label
