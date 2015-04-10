@@ -8,6 +8,7 @@
 ####################################################################
 
 require("ggplot2")
+require("GGally")
 
 
 ####################################################################
@@ -32,13 +33,45 @@ queries$full.name <- paste(queries$curve, " ", queries$label, ": ", queries$prec
 #   Z:  Z-order
 queries$top.curve <- substr(queries$curve, 1, 1)
 
+# disambiguate among the 3-ply variants
+for (i in 1:nrow(queries)) {
+  if (queries$plys[i] == 4) {
+    queries$topology[i] = "(1,1,1,1)"
+  } else {
+    if (queries$plys[i] == 2) {
+      queries$topology[i] = "(4)"
+    } else {
+      if (length(grep("x,y,z\\),t", queries$curve[i], ignore.case=TRUE, perl=TRUE)) == 1) {
+        queries$topology[i] = "(3,1)"
+      } else {
+        queries$topology[i] = "(2,2)"
+      }
+    }
+  }
+}
+queries$topology_f <- factor(queries$topology, levels=c("(1,1,1,1)", "(2,2)", "(3,1)", "(4)"), ordered=TRUE)
+
 # point-size used for representing precision
 queries$ptsize <- sqrt(queries$precision)
 
 # create factors for chart labels
+queries$curve_f = factor(queries$curve, levels=c(
+  "H(H(H(x,y),z),t)", "H(H(R(x,y),z),t)", "H(H(x,y),H(z,t))", "H(H(x,y),R(z,t))", "H(H(x,y,z),t)", "H(H(x,y),Z(z,t))",
+  "H(H(Z(x,y),z),t)", "H(R(H(x,y),z),t)", "H(R(R(x,y),z),t)", "H(R(x,y),H(z,t))", "H(R(x,y),R(z,t))", "H(R(x,y,z),t)",
+  "H(R(x,y),Z(z,t))", "H(R(Z(x,y),z),t)", "H(x,y,z,t)", "H(Z(H(x,y),z),t)", "H(Z(R(x,y),z),t)", "H(Z(x,y),H(z,t))",
+  "H(Z(x,y),R(z,t))", "H(Z(x,y,z),t)", "H(Z(x,y),Z(z,t))", "H(Z(Z(x,y),z),t)", "R(H(H(x,y),z),t)", "R(H(R(x,y),z),t)",
+  "R(H(x,y),H(z,t))", "R(H(x,y),R(z,t))", "R(H(x,y,z),t)", "R(H(x,y),Z(z,t))", "R(H(Z(x,y),z),t)", "R(R(H(x,y),z),t)",
+  "R(R(R(x,y),z),t)", "R(R(x,y),H(z,t))", "R(R(x,y),R(z,t))", "R(R(x,y,z),t)", "R(R(x,y),Z(z,t))", "R(R(Z(x,y),z),t)",
+  "R(x,y,z,t)", "R(Z(H(x,y),z),t)", "R(Z(R(x,y),z),t)", "R(Z(x,y),H(z,t))", "R(Z(x,y),R(z,t))", "R(Z(x,y,z),t)",
+  "R(Z(x,y),Z(z,t))", "R(Z(Z(x,y),z),t)", "Z(H(H(x,y),z),t)", "Z(H(R(x,y),z),t)", "Z(H(x,y),H(z,t))", "Z(H(x,y),R(z,t))",
+  "Z(H(x,y,z),t)", "Z(H(x,y),Z(z,t))", "Z(H(Z(x,y),z),t)", "Z(R(H(x,y),z),t)", "Z(R(R(x,y),z),t)", "Z(R(x,y),H(z,t))",
+  "Z(R(x,y),R(z,t))", "Z(R(x,y,z),t)", "Z(R(x,y),Z(z,t))", "Z(R(Z(x,y),z),t)", "Z(x,y,z,t)", "Z(Z(H(x,y),z),t)",
+  "Z(Z(R(x,y),z),t)", "Z(Z(x,y),H(z,t))", "Z(Z(x,y),R(z,t))", "Z(Z(x,y,z),t)", "Z(Z(x,y),Z(z,t))", "Z(Z(Z(x,y),z),t)"
+  ), ordered=TRUE)
 queries$top.curve_f = factor(queries$top.curve, levels=c("R", "Z", "H"), ordered=TRUE)
 queries$plys_f = factor(queries$plys, levels=c(2, 3, 4), labels=c("2-ply", "3-ply", "4-ply"), ordered=TRUE)
 queries$label_f = factor(queries$label, levels=c("----", "---", "-YZT", "-YT", "X-ZT", "X-T", "XY-T", "XY-", "XYZ-", "XYT", "XYZT"), ordered=TRUE)
+queries$seconds_f = factor(queries$seconds, levels=sort(unique(queries$seconds)), ordered=TRUE)
 
 # filter out the 3D and 4D queries separately
 q3d <- subset(queries, dimensions==3)
@@ -183,6 +216,64 @@ range.study.plot <- function(invert = FALSE) {
 }
 
 
+summary.parcoords <- function(df, width, height) {
+  good.threshold <- 0.10
+  
+  max.precision = max(df$precision)
+  df <- subset(df, df$precision == max.precision)
+
+  seconds.range <- range(df$seconds)
+  time.range.good <- paste("[", seconds.range[1], " to ", good.threshold, "]", sep="")
+  time.range.bad <- paste("(", good.threshold, " to ", seconds.range[2], "]", sep="")
+  df$seconds.color = "#000000"
+  for (i in 1:nrow(df)) {
+    df$seconds.color[i] = hsv(2.0 / 3.0 * (df$seconds[i] - seconds.range[1]) / (seconds.range[2] - seconds.range[1]), 0.8, 0.8)
+  }
+  df$seconds.color_f <- factor(ifelse(df$seconds <= good.threshold, time.range.good, time.range.bad), levels=c(time.range.good, time.range.bad), ordered=TRUE)
+  
+  dims <- dimensions.string(df)
+  graph.name <- paste("parcoord-", dims, ".png", sep="")
+  graph.title <- paste(dims, " queries at ", max.precision, " bits precision", sep="")
+  
+  colNames <- colnames(df)
+  cols <- c(
+    which(colNames == "curve"),
+    which(colNames == "top.curve"),
+    which(colNames == "topology"),
+    which(colNames == "label"),
+    which(colNames == "seconds"),
+    which(colNames == "avg.ranges")
+  )
+  
+  ggparcoord(
+    data = df,
+    columns = cols,
+    scale = "uniminmax",
+    #groupColumn = "seconds_f",
+    groupColumn = "seconds.color_f",
+    #groupColumn = "plys_f",
+    #groupColumn = "topology_f",
+    alpha = 0.1,
+    showPoints = TRUE,
+    title = graph.title
+  ) + 
+    geom_text(aes(legend=FALSE, x=2, y=0.05, label="H", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=2, y=0.55, label="R", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=2, y=1.05, label="Z", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=3, y=0.05, label="(1,1,1,1)", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=3, y=0.40, label="(2,2)", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=3, y=0.70, label="(3,1)", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=3, y=1.05, label="(4)", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=0.05, label="----", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=0.50, label="XY-T", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=0.60, label="XYZ-", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=0.70, label="XYZT", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=0.80, label="X-ZT", size=1), col="#000000", show_guide=FALSE) +
+    geom_text(aes(legend=FALSE, x=4, y=1.05, label="-YZT", size=1), col="#000000", show_guide=FALSE)
+  ggsave(filename=paste("/tmp/", graph.name, "-", dims, ".png", sep=""), width=width, height=height, units="in")
+}
+
+
 ####################################################################
 #
 # MAIN PROGRAM
@@ -190,7 +281,8 @@ range.study.plot <- function(invert = FALSE) {
 ####################################################################
 
 #compactness_vs_throughput()
-score.plot("adjusted", "adj.score")
-score.plot("raw", "score")
+#score.plot("adjusted", "adj.score")
+#score.plot("raw", "score")
 #range.study.plot(FALSE)
 #range.study.plot(TRUE)
+summary.parcoords(q4d, 11.0, 5)

@@ -28,6 +28,15 @@ import BaseCurves._
 // four-dimensionals...
 
 case class FactoryXYZT(precision: Int, plys: Int) {
+  /*
+   *        SFC
+   *       /   \
+   *      SFC   t
+   *     /   \
+   *    SFC   z
+   *   /   \
+   *   x   y
+   */
   def buildVerticalCurve(combination: OrdinalVector, precision: Int): ComposedCurve = {
     val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
@@ -48,16 +57,23 @@ case class FactoryXYZT(precision: Int, plys: Int) {
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }
 
-  def buildMixedCurve(combination: OrdinalVector, precision: Int, side: Int = 0): ComposedCurve = {
+  /*
+   *        SFC
+   *       /   \
+   *    SFC     SFC
+   *   /   \   /   \
+   *   x   y   z   t
+   */
+  def buildMixedCurve22(combination: OrdinalVector, precision: Int, side: Int = 0): ComposedCurve = {
     val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val leftChild: Composable = side match {
-      case 0 => buildMixedCurve(OrdinalVector(combination(0)), leftPrec, 1)
+      case 0 => buildMixedCurve22(OrdinalVector(combination(0)), leftPrec, 1)
       case 1 => DefaultDimensions.createLongitude(leftPrec)
       case 2 => DefaultDimensions.createDimension[Double]("z", 0.0, 50000.0, leftPrec)
     }
     val rightChild: Composable = side match {
-      case 0 => buildMixedCurve(OrdinalVector(combination(1)), rightPrec, 2)
+      case 0 => buildMixedCurve22(OrdinalVector(combination(1)), rightPrec, 2)
       case 1 => DefaultDimensions.createLatitude(rightPrec)
       case 2 => DefaultDimensions.createDateTime(rightPrec)
     }
@@ -67,6 +83,47 @@ case class FactoryXYZT(precision: Int, plys: Int) {
     new ComposedCurve(rawCurve, Seq(leftChild, rightChild))
   }
 
+  /*
+   *      SFC
+   *     /   \
+   *    SFC   t
+   *   / | \
+   *   x y z
+   */
+  def buildMixedCurve31(combination: OrdinalVector, precision: Int, side: Int = 0): ComposedCurve = {
+    val topDimPrecision = precision >> 2
+    val bottomCurvePrecision = precision - topDimPrecision
+    val leafPrecisionRight = bottomCurvePrecision / 3
+    val leafPrecisionCenter = (bottomCurvePrecision - leafPrecisionRight) >> 1
+    val leafPrecisionLeft = bottomCurvePrecision - leafPrecisionRight - leafPrecisionCenter
+
+    val rawCurveBottom = rawNWayCurve(OrdinalVector(combination(0)), leafPrecisionLeft, leafPrecisionCenter, leafPrecisionRight)
+
+    val curveBottom = new ComposedCurve(
+      rawCurveBottom,
+      Seq(
+        DefaultDimensions.createLongitude(leafPrecisionLeft),
+        DefaultDimensions.createLatitude(leafPrecisionCenter),
+        DefaultDimensions.createDimension[Double]("z", 0.0, 50000.0, leafPrecisionRight)
+      )
+    )
+
+    val rawCurveTop = rawNWayCurve(OrdinalVector(combination(1)), bottomCurvePrecision, topDimPrecision)
+
+    new ComposedCurve(
+      rawCurveTop,
+      Seq(
+        curveBottom,
+        DefaultDimensions.createDateTime(topDimPrecision)
+      )
+    )
+  }
+
+  /*
+   *     SFC
+   *   / | | \
+   *   x y z t
+   */
   def buildHorizontalCurve(combination: OrdinalVector, precision: Int): ComposedCurve = {
     val tPrecision = precision / 4
     val zPrecision = (precision - tPrecision) / 3
@@ -91,7 +148,9 @@ case class FactoryXYZT(precision: Int, plys: Int) {
       case 3 =>  // vertical
         combinationsIterator(OrdinalVector(3, 3, 3)).toList.map(combination => buildVerticalCurve(combination, precision))
       case 2 =>  // mixed
-        combinationsIterator(OrdinalVector(3, 3, 3)).toList.map(combination => buildMixedCurve(combination, precision))
+        combinationsIterator(OrdinalVector(3, 3, 3)).toList.map(combination => buildMixedCurve22(combination, precision))
+      case -2 =>  // mixed
+        combinationsIterator(OrdinalVector(3, 3)).toList.map(combination => buildMixedCurve31(combination, precision))
       case 1 =>  // horizontal
         combinationsIterator(OrdinalVector(3)).toList.map(combination => buildHorizontalCurve(combination, precision))
     }

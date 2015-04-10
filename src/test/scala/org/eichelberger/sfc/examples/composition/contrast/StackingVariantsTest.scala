@@ -332,19 +332,22 @@ class StackingVariantsTest extends Specification with LazyLogging {
         "seconds"
       ).mkString("\t"))
 
-      val (bitsLow, bitsHigh) = testLevel match {
-        case Debug  => (40, 40)
-        case Small  => (20, 30)
-        case Medium => (25, 35)
-        case Large  => (20, 40)
+      val (bitsLow, bitsHigh, bitsIncrement) = testLevel match {
+        case Debug  => (40, 40, 1)
+        case Small  => (20, 30, 5)
+        case Medium => (25, 40, 5)
+        case Large  => (20, 40, 2)
       }
 
-      for (totalPrecision <- bitsLow to bitsHigh) {
+      for (totalPrecision <- bitsLow to bitsHigh by bitsIncrement) {
         // 4D, horizontal
         FactoryXYZT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
 
-        // 4D, mixed
+        // 4D, mixed (2, 2)
         FactoryXYZT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, pw))
+
+        // 4D, mixed (3, 1)
+        FactoryXYZT(totalPrecision, -2).getCurves.map(curve => perCurveTestSuite(curve, pw))
 
         // 4D, vertical
         FactoryXYZT(totalPrecision, 3).getCurves.map(curve => perCurveTestSuite(curve, pw))
