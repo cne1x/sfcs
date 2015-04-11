@@ -165,7 +165,7 @@ sometimes is useful to offer an interactive visualization.  Parallel
 corodinates are one such option.  Below is a static image showing a
 small rendering of a subset of SFC evaluation data:
 
-<a target="_blank" style="outline:none; border:0;" href="src/test/resources/composite-curve-parcoord/composite-parcoord.html">
+<a target="_blank" style="outline:none; border:0;" href="file://./src/test/resources/composite-curve-parcoord/composite-parcoord.html">
     <img style="outline:none; border:0;" src="img/parcoords-teaser.png" height="300" width="600"/>
 </a>
 
