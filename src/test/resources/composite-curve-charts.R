@@ -22,7 +22,7 @@ df1 <- read.csv("/tmp/composed-curves.tsv", sep="\t")
 
 # old unit-tests mixed data series; ensure that we are only
 # using the subset that pertains to query ranges
-queries <- subset(df1, df1[,2] == "ranges")
+queries <- subset(df1, df1$test.type == "ranges")
 
 # create a new column that is the curve name plus parameters
 queries$full.name <- paste(queries$curve, " ", queries$label, ": ", queries$precision, " bits", sep="")
@@ -217,10 +217,10 @@ range.study.plot <- function(invert = FALSE) {
 
 
 summary.parcoords <- function(df, width, height) {
-  good.threshold <- 0.10
+  good.threshold <- 0.50
   
   max.precision = max(df$precision)
-  df <- subset(df, df$precision == max.precision)
+  df <- subset(df, df$precision == max.precision & !is.na(df$seconds))
 
   seconds.range <- range(df$seconds)
   time.range.good <- paste("[", seconds.range[1], " to ", good.threshold, "]", sep="")

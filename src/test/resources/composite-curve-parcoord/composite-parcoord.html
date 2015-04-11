@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="https://syntagmatic.github.io/parallel-coordinates/d3.parcoords.js"></script>
+    <script src="./composed-curves.js"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://syntagmatic.github.io/parallel-coordinates/d3.parcoords.css">
+</head>
+
+<body>
+    <h2>Instructions</h2>
+
+    <p></ul><b>select</b> a subset of a dimension by dragging over the portion of the coordinate you wish to keep;
+        de-select by single-clicking anywhere else on the coordinate</p>
+
+    <p></ul><b>reorder</b> the dimensions by dragging one coordinate</p>
+
+    <p></ul><b>invert</b> a dimensions by double-clicking on its header</p>
+
+    <p></ul><b>color</b> by a (numeric) dimension by clicking on its header</p>
+
+<div id="sfseize" class="parcoords" style="width:1600px;height:1300px"></div>
+
+  <script>
+// much thanks to https://syntagmatic.github.io/parallel-coordinates/
+// code and examples were repurposed to produce this plot
+
+// treat data before loading them into the plot...
+data.forEach(function(d) {
+  delete d['when'];
+  delete d['test.type'];
+  delete d['cells.per.second'];
+  delete d['cells.per.range'];
+  delete d['score'];
+  delete d['adj.score'];
+  delete d['seconds.per.cell'];
+  delete d['seconds.per.range'];
+  d['top.curve'] = d['curve'].slice(0, 1);
+  d['num.queries'] = d['replications'];
+  delete d['replications'];
+});
+
+var rcolorscale = d3.scale.linear()
+  .domain([0.0,0.4,0.6,1.0])
+  .range(["steelblue", "#999", "#999", "brown"])
+  .interpolate(d3.interpolateLab);
+
+var pc = d3.parcoords()("#sfseize")
+  .data(data)
+  .margin({top: 20, left: 50, bottom: 20, right: 0})
+  //.ticks(2)
+  //.hideAxis(["curve", "num.queries"])
+  .alpha(0.5)
+  .render()
+  .brushMode("1D-axes")
+  .reorderable()
+  .interactive();
+
+change_color("curve")
+
+pc.svg.selectAll(".dimension")
+    .on("click", change_color)
+    .selectAll(".label")
+    .style("font-size", "14px");
+
+function change_color(dimension) {
+  pc.svg.selectAll(".dimension")
+    .style("font-weight", "normal")
+    .filter(function(d) { return d == dimension; })
+    .style("font-weight", "bold")
+
+  pc.color(rcolor(pc.data(),dimension)).render()
+}
+
+var selDim = null;
+var selCol = null;
+
+function rcolor(col, dimension) {
+  var r = rscore(_(col).pluck(dimension).map(parseFloat))
+  return function(d) { return rcolorscale(r(d[dimension])) }
+};
+
+function rscore(col) {
+  var min = _.min(col),
+      max = _.max(col),
+      range = max - min;
+  return function(d) {
+    if (range > 0.0) return (d - min) / range;
+    return 0.50;
+  };
+};
+</script>
+
+  <h2>Acknowledgements</h2>
+
+  <p>Thanks to...</p>
+  <ul>
+      <li>the <a href="http://d3js.org/">D3</a> library</li>
+      <li>Kai Chang's <a href="https://syntagmatic.github.io/parallel-coordinates/">parallel coordinates</a> project</li>
+      <li>the <a href="http://underscorejs.org/">Underscore.js</a> library</li>
+  </ul>
+
+</body>
+</html>

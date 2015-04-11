@@ -158,9 +158,20 @@ Again, most of what this shows is what was summarized in the preceding section:
 Hilbert does a better job of capturing larger, contiguous ranges, whereas it
 becomes simple to see why the row-major curve is a faster planner.
 
-#### Compactness v. throughput
+#### Data exploration
 
-<img src="img/curves-3D-scores.png" width="600" height="400" />
+A single, good visualization of test data is difficult.  Instead, it
+sometimes is useful to offer an interactive visualization.  Parallel
+corodinates are one such option.  Below is a static image showing a
+small rendering of a subset of SFC evaluation data:
+
+<a target="_blank" style="outline:none; border:0;" href="src/test/resources/composite-curve-parcoord/composite-parcoord.html">
+    <img style="outline:none; border:0;" src="img/parcoords-teaser.png" height="300" width="600"/>
+</a>
+
+Click on the image to bring up a new tab that contains the fully
+interactive version of the chart, using a relatively small subset of
+test data.
 
 ## Curves included in this library
 

@@ -128,7 +128,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
 
   val uniqueLabels = labels.toSet.toSeq
 
-  def verifyRoundTrip(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
+  def verifyRoundTrip(curve: ComposedCurve, print: Boolean = false): Boolean = {
     val (_, msElapsed) = time(() => {
       var i = 0
       while (i < n) {
@@ -149,7 +149,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
     true
   }
 
-  def verifyQueryRanges(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean = {
+  def verifyQueryRanges(curve: ComposedCurve, output: OutputFormat, print: Boolean = false): Boolean = {
     // conduct all queries against this curve
     val results: List[(String, Seq[OrdinalPair], Long)] = pointQueryPairs.map{
       case (point, rawCell, label) =>
@@ -205,6 +205,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
         val avgAdjScore = avgCellsPerSecond * Math.log(1.0 + avgCellsPerRange)
 
         val data = Seq(
+          DateTime.now().toString,
           curve.name,
           "ranges",
           aggLabel,
@@ -222,8 +223,8 @@ class StackingVariantsTest extends Specification with LazyLogging {
           avgAdjScore,
           seconds
         )
+        output.println(data)
         println(data.mkString(","))
-        pw.println(data.mkString("\t"))
     }
 
     true
@@ -306,60 +307,64 @@ class StackingVariantsTest extends Specification with LazyLogging {
     true
   }
 
-  def perCurveTestSuite(curve: ComposedCurve, pw: PrintWriter, print: Boolean = false): Boolean =
+  def perCurveTestSuite(curve: ComposedCurve, output: OutputFormat, print: Boolean = false): Boolean =
     //verifyRoundTrip(curve, pw, print) &&  //@TODO restore!
-      verifyQueryRanges(curve, pw, print)
+      verifyQueryRanges(curve, output, print)
 
   "the various compositions" should {
     "print scaling results" >> {
-      val pw = new PrintWriter(new BufferedWriter(new FileWriter(s"/tmp/composed-curves.tsv")))
-      pw.println(Seq(
-        "curve",
-        "test.type",
-        "label",
-        "precision",
-        "replications",
-        "dimensions",
-        "plys",
-        "avg.ranges",
-        "avg.cells",
-        "cells.per.second",
-        "cells.per.range",
-        "seconds.per.cell",
-        "seconds.per.range",
-        "score",
-        "adj.score",
-        "seconds"
-      ).mkString("\t"))
-
       val (bitsLow, bitsHigh, bitsIncrement) = testLevel match {
         case Debug  => (40, 40, 1)
-        case Small  => (20, 30, 5)
-        case Medium => (25, 40, 5)
-        case Large  => (20, 40, 2)
+        case Small  => (20, 30, 10)
+        case Medium => (20, 40, 10)
+        case Large  => (20, 40, 5)
       }
+
+      val columns = OutputMetadata(Seq(
+        ColumnSpec("when", isQuoted = true),
+        ColumnSpec("curve", isQuoted = true),
+        ColumnSpec("test.type", isQuoted = true),
+        ColumnSpec("label", isQuoted = true),
+        ColumnSpec("precision", isQuoted = false),
+        ColumnSpec("replications", isQuoted = false),
+        ColumnSpec("dimensions", isQuoted = false),
+        ColumnSpec("plys", isQuoted = false),
+        ColumnSpec("avg.ranges", isQuoted = false),
+        ColumnSpec("avg.cells", isQuoted = false),
+        ColumnSpec("cells.per.second", isQuoted = false),
+        ColumnSpec("cells.per.range", isQuoted = false),
+        ColumnSpec("seconds.per.cell", isQuoted = false),
+        ColumnSpec("seconds.per.range", isQuoted = false),
+        ColumnSpec("score", isQuoted = false),
+        ColumnSpec("adj.score", isQuoted = false),
+        ColumnSpec("seconds", isQuoted = false)
+      ))
+      val output = MultipleOutput(Seq(
+        TSV("/tmp/composed-curves.tsv", columns, writeHeader = true),
+        JSON("/tmp/composed-curves.js", columns)
+      ))
 
       for (totalPrecision <- bitsLow to bitsHigh by bitsIncrement) {
         // 4D, horizontal
-        FactoryXYZT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYZT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, output))
 
         // 4D, mixed (2, 2)
-        FactoryXYZT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYZT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, output))
 
         // 4D, mixed (3, 1)
-        FactoryXYZT(totalPrecision, -2).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYZT(totalPrecision, -2).getCurves.map(curve => perCurveTestSuite(curve, output))
 
         // 4D, vertical
-        FactoryXYZT(totalPrecision, 3).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYZT(totalPrecision, 3).getCurves.map(curve => perCurveTestSuite(curve, output))
 
         // 3D, horizontal
-        FactoryXYT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYT(totalPrecision, 1).getCurves.map(curve => perCurveTestSuite(curve, output))
 
         // 3D, mixed
-        FactoryXYT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, pw))
+        FactoryXYT(totalPrecision, 2).getCurves.map(curve => perCurveTestSuite(curve, output))
       }
 
-      pw.close()
+      output.close()
 
       1 must equalTo(1)
     }
