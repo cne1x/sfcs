@@ -25,7 +25,7 @@ class StackingVariantsTest extends Specification with LazyLogging {
     val Debug, Small, Medium, Large = Value
   }
   import TestLevels._
-  val testLevel = Small
+  val testLevel = Medium
 
   case class XYZTPoint(x: Double, y: Double, z: Double, t: DateTime)
 
