@@ -173,20 +173,58 @@ Click on the image to bring up a new tab that contains the fully
 interactive version of the chart, using a relatively small subset of
 test data.
 
+#### Specific questions to be considered
+
+The test bed is in development to allow us to collect data on these
+specific questions (all of which assume *n* dimensions total):
+
+1.  timing:  How quickly can query-ranges be computed for the
+    various curves and their compositions?  How does this vary
+    with the allocation of total precision among dimensions?
+1.  range explosion:  If you start with a query that consists of
+    *n* ranges, how many ranges does the top-level curve need to
+    emit?  (For all but trivial queries, this number will be larger
+    than *n*; the question is, how much larger? and what does the
+    size of that increase depend upon?)
+1.  "select *" penalties:  planning works best when queries use
+    all of the dimensions (when no dimensions default to "select *").
+    What is the penalty of leaving one (or more) dimensions out of
+    a query, both in terms of time and number of ranges, etc.?
+1.  recommendation:  Is it possible to find a set of constraining
+    properties such that those properties can be mapped to specific
+    recommendations for curve stacking and precision allocation?
+    What are the limits of such a recommendation?
+1.  geography:  What is the best way to incorporate real-world
+    (latitutde, longitude) geometries into an index?  How much
+    effort do increasing levels of fidelity cost?  What about
+    handling non-point geometries?
+1.  planning heuristics:  Depending on the NoSQL database you are
+    using, there may be various trade-offs between the client-time
+    effort spent planning a query vs. the server-side time spent
+    filtering out entries.  Is there a sensible way to accept
+    cost hints so that these trade-offs can be balanced within the
+    curve portion of a query planner?  If so, how?
+1.  interactions:  How to the preceding complexities interact?
+    Does, for example, the planning time scale linearly with the number of
+    query ranges?
+
+There are plenty more questions; this is simply the list that
+occurs to us first.  There's never any shortage of questions...
+
 ## Curves included in this library
 
 These are the space-filling curves that have already been encoded:
 
 1.  row-major:  This is a naive curve roughly equivalent to row-major ordering.
-1.  z-order:  This curve interleaves bits of the input ordinal numbers, which means that not all
-    combinations of input precisions are valid.  For example, having a two-dimensional space in
-    which the first dimension uses 10 bits and the second uses 2 bits is not a good fit for a
-    z-order mapping.  (There are ways to overcome this, but for now it just complains.)
+1.  z-order:  This curve interleaves bits of the input ordinal numbers.  Oftentimes,
+    the precisions are kept all within one bit of each other, but we have relaxed this
+    requirement to allow for arbitrary curve composition.
     [Geohashing](http://www.geohash.org) interleaves longitude and latitude ordinals via a z-order
     curve, so the implementation here should be considered a superset of that type of mapping.
 1.  compact-hilbert:  Based on a "U"-shape path that recurses (while rotating, flipping), a
     Hilbert curve tends to have fewer, shorter discontinuities in the index-space than the z-order
-    curve.  The "compact" refers to the fact that not all dimensions need share the same precision.
+    curve.  The "compact" refers to the fact that not all dimensions need share the same precision,
+    which here we use to support (again) the arbitrary composition of curves.
 
 ## "Wouldn't it be cool..."
 
