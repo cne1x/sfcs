@@ -34,53 +34,13 @@ class LocalityEstimatorTest extends Specification with LazyLogging {
     }
   }
 
-  "curve validation" should {
-    println(s"Largest full-index space:  ${LocalityEstimator.largestFullIndexSpace}")
-
-    "order expectedly for full sampling" >> {
-      val r = RowMajorCurve(3, 3, 4)
-      val z = ZCurve(3, 3, 4)
-      val h = CompactHilbertCurve(3, 3, 4)
-
-      val locR = LocalityEstimator(r).locality
-      println(s"[LOCALITY] R:  $locR")
-
-      val locZ = LocalityEstimator(z).locality
-      println(s"[LOCALITY] Z:  $locZ")
-
-      val locH = LocalityEstimator(h).locality
-      println(s"[LOCALITY] H:  $locH")
-
-      locR.locality must beLessThanOrEqualTo(locZ.locality)
-      locZ.locality must beLessThanOrEqualTo(locH.locality)
-    }
-
-    "run with partial sampling" >> {
-      val r = RowMajorCurve(5, 5, 5)
-      val z = ZCurve(5, 5, 5)
-      val h = CompactHilbertCurve(5, 5, 5)
-
-      val locR = LocalityEstimator(r).locality
-      println(s"[LOCALITY] R:  $locR")
-
-      val locZ = LocalityEstimator(z).locality
-      println(s"[LOCALITY] Z:  $locZ")
-
-      val locH = LocalityEstimator(h).locality
-      println(s"[LOCALITY] H:  $locH")
-
-      1 must equalTo(1)
-    }
-  }
-
-  //@Ignore
   "study" should {
-    "yield 2D curve locality scaling" >> {
+    "yield 2D curve locality scaling" >> pending {
       val pw = new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter("/tmp/locality-2d.tsv")))
 
       def test(curve: SpaceFillingCurve, px: Int, py: Int): Unit = {
         val loc = LocalityEstimator(curve).locality
-        println(s"[2D LOCALITY ($px, $py)] R:  $loc")
+        println(s"[2D LOCALITY ($px, $py)] ${curve.name}:  $loc")
         pw.println(s"${curve.name}\t$px\t$py\t${loc.locality}\t${loc.coverage}")
       }
 
