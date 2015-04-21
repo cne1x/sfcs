@@ -2,15 +2,16 @@ package org.eichelberger.sfc.utils
 
 import org.eichelberger.sfc.SpaceFillingCurve._
 
-case class LocalityResult(locality: Double, coverage: Double)
+case class LocalityResult(
+  locality: Double,
+  normalizedLocality: Double,
+  localityInverse: Double,
+  normalizedLocalityInverse: Double,
+  sampleSize: Int,
+  coverage: Double)
 
 object LocalityEstimator {
-  val maxEvaluations = 1L << 16L
-
-  val largestFullIndexSpace =
-    Math.floor(0.5 + Math.sqrt(0.5 + 2.0 * maxEvaluations)).toLong
-
-  val maxFullBits = Math.floor(Math.log(largestFullIndexSpace) / Math.log(2.0))
+  val maxEvaluations = 1L << 14L
 
   case class SampleItem(dUser: Double, dIndex: Double)
 
@@ -20,23 +21,45 @@ object LocalityEstimator {
 case class LocalityEstimator(curve: SpaceFillingCurve) {
   import LocalityEstimator._
 
-  lazy val maxDIndex = curve.size.toDouble
-  lazy val maxDUser = Math.sqrt(curve.cardinalities.map(x => x.toDouble * x.toDouble).sum)
+  lazy val deltas = (0 until curve.n).toList
 
-  lazy val fullSampleSize = 0.5 * curve.size.toDouble * (curve.size.toDouble - 1.0)
+  lazy val fullSampleSize = curve.n * curve.cardinalities.product -
+    curve.cardinalities.sum
 
+  lazy val maxUserDistance = Math.sqrt(curve.cardinalities.map(c => c * c).sum)
+
+  // items are known to be 1 unit apart in user space
+  def sampleItem(a: OrdinalVector, b: OrdinalVector): SampleItem = {
+    val idxA: OrdinalNumber = curve.index(a)
+    val idxB: OrdinalNumber = curve.index(b)
+    SampleItem(1.0, Math.abs(idxA - idxB))
+  }
+
+  // items are known to be 1 unit apart in index space
   def sampleItem(a: OrdinalNumber, b: OrdinalNumber): SampleItem = {
-    val ptA = curve.inverseIndex(a)
-    val ptB = curve.inverseIndex(b)
+    val ptA: OrdinalVector = curve.inverseIndex(a)
+    val ptB: OrdinalVector = curve.inverseIndex(b)
+    val distUser = Math.sqrt(ptA.zipWith(ptB).map { case (coordA, coordB) =>
+      (coordA - coordB) * (coordA - coordB) }.sum)
+    SampleItem(distUser, 1.0)
+  }
 
-    val dIndex = Math.abs(a - b)
-    val dUser = Math.sqrt(
-      ptA.zipWith(ptB).map {
-        case (coordA, coordB) => (coordA - coordB) * (coordA - coordB)
-      }.sum
-    )
+  def randomPoint: OrdinalVector =
+    OrdinalVector(deltas.map(i =>
+      Math.floor(Math.random() * (curve.cardinalities(i).toDouble - 1.0)).toLong
+    ):_*)
 
-    SampleItem(dUser / maxDUser, dIndex / maxDIndex)
+  def randomPointAdjacent(a: OrdinalVector): OrdinalVector = {
+    while (true) {
+      val dim = Math.floor(Math.random() * (curve.n.toDouble - 1.0)).toInt
+      val dir = if (Math.random() < 0.5) 1L else -1L
+      val newCoord = a(dim) + dir
+      if (newCoord >= 0 && newCoord < curve.cardinalities(dim))
+        return a.set(dim, newCoord)
+    }
+
+    // dummy; this code is never reached
+    OrdinalVector()
   }
 
   def randomSample: Sample = {
@@ -44,8 +67,8 @@ case class LocalityEstimator(curve: SpaceFillingCurve) {
 
     var i = 0
     while (i < maxEvaluations) {
-      val a = Math.floor((curve.size - 1L) * Math.random()).toLong
-      val b = Math.floor(a + 1 + (curve.size - a - 1L) * Math.random()).toLong
+      val a = randomPoint
+      val b = randomPointAdjacent(a)
       sample = sample :+ sampleItem(a, b)
       i = i + 1
     }
@@ -53,48 +76,65 @@ case class LocalityEstimator(curve: SpaceFillingCurve) {
     sample
   }
 
-  def fullSample: Sample = {
-    var sample: Sample = Seq[SampleItem]()
-    var a = 0L
-    var b = 0L
+  def randomSampleInverse: Sample = {
+    val sample = collection.mutable.ListBuffer[SampleItem]()
 
-    while (a < curve.size - 1L) {
-      b = a + 1L
-      while (b < curve.size) {
-        sample = sample :+ sampleItem(a, b)
-        b = b + 1L
-      }
-      a = a + 1L
+    var i = 0
+    while (i < maxEvaluations) {
+      val idx = Math.floor(Math.random() * (curve.n.toDouble - 2.0)).toLong
+      sample += sampleItem(idx, idx + 1L)
+      i = i + 1
     }
 
     sample
   }
 
-  def covariance(sample: Sample): Double = {
-    val x = sample.map(_.dUser)
-    val y = sample.map(_.dIndex)
+  def fullSample: Sample = {
+    // iterate over all cells in the index space
+    val cellIdxItr = combinationsIterator(OrdinalVector(curve.cardinalities:_*))
 
-    val xMean = x.sum / x.size.toDouble
-    val yMean = y.sum / y.size.toDouble
-
-    val products = x.zip(y).map {
-      case (xi, yi) => (xi - xMean) * (yi - yMean)
-    }
-
-    products.sum / products.size.toDouble
+    (for (
+      cellIdx <- cellIdxItr;
+      deltaDim <- deltas if cellIdx(deltaDim) + 1L < curve.cardinalities(deltaDim);
+      adjCellIdx = cellIdx.set(deltaDim, cellIdx(deltaDim) + 1L)
+    ) yield sampleItem(cellIdx, adjCellIdx)).toSeq
   }
 
-  def maxAllowableIndexSize: OrdinalNumber =
-    Math.floor(0.5 + Math.sqrt(0.5 + 2.0 * maxEvaluations)).toLong
+  def fullSampleInverse: Sample = {
+    val sample = collection.mutable.ListBuffer[SampleItem]()
+
+    var idx: OrdinalNumber = 0
+    while ((idx + 1L) < curve.size) {
+      sample += sampleItem(idx, idx+1)
+      idx = idx + 1L
+    }
+
+    sample
+  }
 
   def locality: LocalityResult = {
     // pull a sample, constrained by a maximum size
     val sample: Sample =
-      if (curve.M > maxFullBits) randomSample
+      if (fullSampleSize > maxEvaluations) randomSample
       else fullSample
 
+    val absLocality = sample.map(_.dIndex).sum / sample.size.toDouble
+    val relLocality = absLocality / curve.size.toDouble
+
+    // pull an inverse sample, constrained by a maximum size
+    val sampleInverse: Sample =
+      if (fullSampleSize > maxEvaluations) randomSampleInverse
+      else fullSampleInverse
+
+    val absLocalityInverse = sampleInverse.map(_.dUser).sum / sample.size.toDouble
+    val relLocalityInverse = absLocalityInverse / maxUserDistance
+
     LocalityResult(
-      covariance(sample),
+      absLocality,
+      relLocality,
+      absLocalityInverse,
+      relLocalityInverse,
+      sample.size,
       sample.size.toDouble / fullSampleSize
     )
   }
