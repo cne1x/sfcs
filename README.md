@@ -226,6 +226,182 @@ These are the space-filling curves that have already been encoded:
     curve.  The "compact" refers to the fact that not all dimensions need share the same precision,
     which here we use to support (again) the arbitrary composition of curves.
 
+## Getting started
+
+Before you get started, there's one bit of nomenclature to cover:
+As far as this library is concerned, "raw curve" refers to a space-filling
+curve that operates strictly in index space; that is, it knows nothing
+about the user-space dimensions you might care about, and works strictly
+in ordinal numbers both for input and output.  A "composed curve", in
+contrast, is a composition of raw curves with <code>Dimension</code>
+leaf nodes.  The Geohash example is a composed curve, because it knows
+about latitude and longitude, which are real-valued dimensions that can
+be discretized as inputs to raw curves.
+
+That behind us, there are a few different ways you can start playing with the library,
+listed here from simplest to most involved:
+
+1.  use the Geohash example class;
+1.  instantiate some of the raw curves
+1.  compose some of your own curves with dimensions
+
+### Use the Geohash example class
+
+The examples package includes a Geohash implementation.  Although this
+is primarily present for reference, it is fully functional.  Here is an
+example Scala snippet:
+
+```scala
+import org.eichelberger.sfc.examples.Geohash
+
+// create the curve
+val totalPrecision = 35  // bits to be allocated between longitude and latitude
+val gh = new Geohash(totalPrecision)
+
+// compute a hash from a (lon, lat) point
+val hashCville = geohash.pointToHash(Seq(-78.49, 38.04))
+println(s"Representative Charlottesville point hashes to $hashCville")
+
+// compute the (inverse) cell from the hash
+val cellCville = geohash.hashToCell(hashCville)
+println(s"Representative Charlottesville hash corresponds to cell $cellCville")
+```
+
+If all you want to do is to use Geohash strings to map between physical
+(lon, lat) points and Geohash cells, that's all there is to it.
+
+NB:  "Proper" Geohash strings use a base-32 alphabet, which this lexicoder will
+only use when the total precision is evenly divisible by 5.  If you use a total
+precision like 19, your hash will be expressed using base-2 characters.
+Easy enough, once you know.  
+
+### Instantiate some of the raw curves
+
+The raw curves operate strictly on ordinal numbers, because they map between
+index spaces, and ignore user space entirely.  This makes them somewhat more
+abstract than the Geohash example listed previously.
+
+Also unlike the Geohash example, the raw curves are valid for arbitrarily 
+many dimensions, so you have to specify the precision of each of the dimensions
+explicitly.  For example:
+
+```scala
+import org.eichelberger.sfc._
+import org.eichelberger.sfc.SpaceFillingCurve._
+
+// create a 4D curve
+val zCurve = new ZCurve(OrdinalVector(10, 20, 15, 4))
+
+// map from an input point to a hashed point
+val idx = zCurve.index(OrdinalVector(7, 28, 2001, 8))
+println(s"(7, 28, 2001, 8) -> $idx")
+
+// invert the map back to inputs
+val point = zCurve.inverseIndex(idx)
+println(s"$idx <- $point")
+```
+
+That snipped creates a four-dimensional Z-Order curve in which
+the dimensions contain 1,024, 1,048,576, 32,768, and 16 cells,
+respectively.  (This is perfectly valid for a Z-Order curve,
+although their use in Geohashes often sees them used with precisions
+that are all within 1 bit of each other.)
+
+The curve must be able to go from an initial input to a hash back
+to the initial input *without any loss of information*, because
+the operations occur strictly within index space.  Without this
+property, composition becomes fruitless (or at least much, *much*
+more complicated).
+
+### Compose your own curves with dimensions
+
+First, congratulations for having read this far, even if all you
+did was scroll down from the top.  Documentation is even more
+tiring to read than it is to write...
+
+Composing your own curve consists of two main phases:  Deciding
+what user-space variables you care about (including how to bin them),
+and establishing your functional chain of raw curves on top of
+those dimensions.
+
+As our example, assume we wanted to build a curve in which plain
+(lon, lat) geography was joined in a Hilbert curve, and that curve's
+output was joined with date-time in a row-major curve.  This composition
+is illustrated below.
+
+<img src="img/readme-composed-curve-example.png" height="251" width="409"/>
+
+Here is a code snippet that would construct, and use, this curve:
+
+```scala
+import org.eichelberger.sfc._
+import org.eichelberger.sfc.Dimensions._
+import org.eichelberger.sfc.SpaceFillingCurve._
+
+// create the dimensions that can manage user-space
+val x = DefaultDimensions.createLongitude(18)  // ~153 meters per cell (@ equator)
+val y = DefaultDimensions.createLatitude(17)   // ~153 meters per cell
+val t = DefaultDimensions.createDateTime(
+  new DateTime(1970, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
+  new DateTime(2010, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
+)
+
+// compose the curve with dimensions
+val curve = new ComposedCurve(
+  new RowMajorCurve(20, 35),
+  Seq(
+    t,
+    new ComposedCurve(
+      new CompactHilbertCurve(18, 17),
+      Seq(x, y)
+    )
+  )
+)
+
+// hashing points in user space
+val point = Seq(
+  new DateTime(4, 7, 1998, 21, 15, 11, DateTimeZone.forId("UTC")),  // t
+  -78.49,                                                           // x
+  38.04                                                             // y
+)
+val hash = curve.pointToHash()
+println(s"$point -> $hash")
+
+// fetching user-space cells from hash value
+val cell = curve.hashToCell(hash)
+println(s"$cell <- $hash")
+
+// identify the top-level index-ranges that cover a query
+val query = Cell(Seq(
+  DefaultDimensions.createDateTime(
+    new DateTime(1998, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
+    new DateTime(1998, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC")),
+    0
+  ),
+  DefaultDimensions.createDimension("x", -80.0, -79.0, 0),
+  DefaultDimensions.createDimension("y", 38.0, 39.0, 0)
+))
+val ranges = curve.getRangesCoveringCell(cell).toList
+println(s"Number of ranges:  ${ranges.size}")
+val totalCells = ranges.map(_.size).sum
+println(s"Total cells in ranges:  $totalCells")
+```
+
+For illustration, we have constructed a time dimension that is only 
+defined over the span January 1, 1970 through December 31, 2010.
+At 20 bits, this makes each of the 1,048,576 bins approximately
+1,233,901 milliseconds (20 minutes and 33.9 seconds days) wide.
+
+The query we show uses a time-range of one year and a geographic
+range of 1 degree longitude by 1 degree latitude.
+
+NB:  The order matters *very much* when composing these curves.
+The entire reason that the date-time dimension is on the left is
+that, for date-only queries, computing the query ranges would be
+very fast; if we were more likely to have geometry-only queries,
+then the Hilbert curve joining longitude and latitude should have
+been placed on the left (the "major" position in the row-major curve).
+
 ## "Wouldn't it be cool..."
 
 Here are some tasks that would be fun to incorporate:

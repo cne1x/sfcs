@@ -1,0 +1,14 @@
+digraph G {
+  node [ shape="rectangle" style="filled" fillcolor="#FFFFFF" ]
+
+  R -> t
+  R -> H
+  H -> x
+  H -> y
+
+  R [ label="row-major curve" fillcolor="#CCCCCC" ]
+  H [ label="compact Hilbert curve" fillcolor="#CCCCCC" ]
+  t [ label="date-time (20 bits)" ]
+  x [ label="longitude (18 bits)" ]
+  y [ label="latitude (17 bits)" ]
+}
