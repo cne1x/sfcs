@@ -245,6 +245,11 @@ listed here from simplest to most involved:
 1.  instantiate some of the raw curves
 1.  compose some of your own curves with dimensions
 
+Each of these use cases is presented here in greater detail, but note
+that they all exist in the code base in the <code>org.eichelberger.sfc.examples.quickstart</code>
+package as <code>Example1.scala</code>, <code>Example2.scala</code>, and <code>Example3.scala</code>, 
+respectively.
+
 ### Use the Geohash example class
 
 The examples package includes a Geohash implementation.  Although this
@@ -256,7 +261,7 @@ import org.eichelberger.sfc.examples.Geohash
 
 // create the curve
 val totalPrecision = 35  // bits to be allocated between longitude and latitude
-val gh = new Geohash(totalPrecision)
+val geohash = new Geohash(totalPrecision)
 
 // compute a hash from a (lon, lat) point
 val hashCville = geohash.pointToHash(Seq(-78.49, 38.04))
@@ -334,57 +339,59 @@ is illustrated below.
 Here is a code snippet that would construct, and use, this curve:
 
 ```scala
-import org.eichelberger.sfc._
-import org.eichelberger.sfc.Dimensions._
-import org.eichelberger.sfc.SpaceFillingCurve._
+  import org.eichelberger.sfc._
+  import org.eichelberger.sfc.Dimensions._
+  import org.eichelberger.sfc.SpaceFillingCurve._
+  import org.joda.time.{DateTimeZone, DateTime}
 
-// create the dimensions that can manage user-space
-val x = DefaultDimensions.createLongitude(18)  // ~153 meters per cell (@ equator)
-val y = DefaultDimensions.createLatitude(17)   // ~153 meters per cell
-val t = DefaultDimensions.createDateTime(
-  new DateTime(1970, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
-  new DateTime(2010, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
-)
+  // create the dimensions that can manage user-space
+  val x = DefaultDimensions.createLongitude(18)  // ~153 meters per cell (@ equator)
+  val y = DefaultDimensions.createLatitude(17)   // ~153 meters per cell
+  val t = DefaultDimensions.createDateTime(
+      new DateTime(1970, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
+      new DateTime(2010, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC")),
+      20
+    )
 
-// compose the curve with dimensions
-val curve = new ComposedCurve(
-  new RowMajorCurve(20, 35),
-  Seq(
-    t,
-    new ComposedCurve(
-      new CompactHilbertCurve(18, 17),
-      Seq(x, y)
+  // compose the curve with dimensions
+  val curve = new ComposedCurve(
+    RowMajorCurve(20, 35),
+    Seq(
+      t,
+      new ComposedCurve(
+        CompactHilbertCurve(18, 17),
+        Seq(x, y)
+      )
     )
   )
-)
 
-// hashing points in user space
-val point = Seq(
-  new DateTime(4, 7, 1998, 21, 15, 11, DateTimeZone.forId("UTC")),  // t
-  -78.49,                                                           // x
-  38.04                                                             // y
-)
-val hash = curve.pointToHash()
-println(s"$point -> $hash")
+  // hashing points in user space
+  val point = Seq(
+    new DateTime(1998, 4, 7, 21, 15, 11, DateTimeZone.forID("UTC")),  // t
+    -78.49,                                                           // x
+    38.04                                                             // y
+  )
+  val hash = curve.pointToHash(point)
+  println(s"$point -> $hash")
 
-// fetching user-space cells from hash value
-val cell = curve.hashToCell(hash)
-println(s"$cell <- $hash")
+  // fetching user-space cells from hash value
+  val cell = curve.hashToCell(hash)
+  println(s"$cell <- $hash")
 
-// identify the top-level index-ranges that cover a query
-val query = Cell(Seq(
-  DefaultDimensions.createDateTime(
-    new DateTime(1998, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
-    new DateTime(1998, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC")),
-    0
-  ),
-  DefaultDimensions.createDimension("x", -80.0, -79.0, 0),
-  DefaultDimensions.createDimension("y", 38.0, 39.0, 0)
-))
-val ranges = curve.getRangesCoveringCell(cell).toList
-println(s"Number of ranges:  ${ranges.size}")
-val totalCells = ranges.map(_.size).sum
-println(s"Total cells in ranges:  $totalCells")
+  // identify the top-level index-ranges that cover a query
+  val query = Cell(Seq(
+    DefaultDimensions.createDateTime(
+      new DateTime(1998, 6, 15, 0, 0, 0, DateTimeZone.forID("UTC")),
+      new DateTime(1998, 7, 15, 23, 59, 59, DateTimeZone.forID("UTC")),
+      0
+    ),
+    DefaultDimensions.createDimension("x", -80.0, -79.0, 0),
+    DefaultDimensions.createDimension("y", 38.0, 39.0, 0)
+  ))
+  val ranges = curve.getRangesCoveringCell(query).toList
+  println(s"Number of ranges:  ${ranges.size}")
+  val totalCells = ranges.map(_.size).sum
+  println(s"Total cells in ranges:  $totalCells")
 ```
 
 For illustration, we have constructed a time dimension that is only 
@@ -392,8 +399,12 @@ defined over the span January 1, 1970 through December 31, 2010.
 At 20 bits, this makes each of the 1,048,576 bins approximately
 1,233,901 milliseconds (20 minutes and 33.9 seconds days) wide.
 
-The query we show uses a time-range of one year and a geographic
-range of 1 degree longitude by 1 degree latitude.
+The query we show uses a time-range of approximately one month and a geographic
+range of 1 degree longitude by 1 degree latitude.  Because the total
+precision of the composed curve is 55 bits, this query covers
+more than 1.15 billion cells contained in 1.76 million ranges.
+Whether the time required to enumerate these ranges is acceptable
+depends upon your application.
 
 NB:  The order matters *very much* when composing these curves.
 The entire reason that the date-time dimension is on the left is
