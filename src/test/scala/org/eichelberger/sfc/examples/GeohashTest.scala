@@ -1,12 +1,13 @@
 package org.eichelberger.sfc.examples
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.{DefaultDimensions, Dimension, GenericTesting}
+import org.eichelberger.sfc.utils.Timing
+import org.eichelberger.sfc.{DefaultDimensions, Dimension}
 import org.eichelberger.sfc.SpaceFillingCurve._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
-import org.eichelberger.sfc.GenericTesting._
+import org.eichelberger.sfc.study.composition.CompositionSampleData._
 
 @RunWith(classOf[JUnitRunner])
 class GeohashTest extends Specification with LazyLogging {
@@ -75,7 +76,7 @@ class GeohashTest extends Specification with LazyLogging {
       }
 
       for (dimPrec <- 10 to 25) {
-        val ((numCells, numRanges), ms) = GenericTesting.time{ () => atPrecision(dimPrec, dimPrec - 1) }
+        val ((numCells, numRanges), ms) = Timing.time{ () => atPrecision(dimPrec, dimPrec - 1) }
         println(s"[ranges across scales, Charlottesville] precision ($dimPrec, ${dimPrec - 1}) -> $numCells / $numRanges = ${numCells / numRanges} in $ms milliseconds")
       }
 

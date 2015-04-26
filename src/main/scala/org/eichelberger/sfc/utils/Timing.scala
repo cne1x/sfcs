@@ -1,8 +1,6 @@
-package org.eichelberger.sfc
+package org.eichelberger.sfc.utils
 
-object GenericTesting {
-  val bboxCville = (-78.5238, 38.0097, -78.4464, 38.0705)
-
+object Timing {
   def time[T](a: () => T): (T, Long) = {
     val nanoStart = System.nanoTime()
     val result = a()

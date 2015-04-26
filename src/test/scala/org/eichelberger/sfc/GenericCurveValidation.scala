@@ -1,12 +1,12 @@
 package org.eichelberger.sfc
 
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve, _}
+import org.eichelberger.sfc.utils.Timing
 
 import scala.collection.mutable
 import scala.util.{Success, Try}
 
 trait GenericCurveValidation {
-  import GenericTesting._
 
   def curveName: String
 
@@ -98,7 +98,7 @@ trait GenericCurveValidation {
   }
   
   def timeTestOrderings(): Boolean = {
-    val (result, msDuration) = time(testOrderings)
+    val (result, msDuration) = Timing.time(testOrderings)
     println(s"\n[CURVE VALIDATION TIMING] $curveName:  ${(msDuration.toDouble / 1000.0).formatted("%1.3f")} sec\n")
     result
   }

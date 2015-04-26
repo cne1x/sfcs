@@ -1,25 +1,29 @@
 package org.eichelberger.sfc.study.locality
 
 import org.eichelberger.sfc.examples.composition.contrast.FactoryXYZT
+import org.eichelberger.sfc.study.{ColumnSpec, OutputMetadata, MirroredTSV}
 import org.eichelberger.sfc.{ComposedCurve, CompactHilbertCurve, ZCurve, RowMajorCurve}
 import org.eichelberger.sfc.SpaceFillingCurve._
 import org.eichelberger.sfc.utils.LocalityEstimator
 
-object LocalityStudy extends App {
-  val pw = new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter("/tmp/locality.tsv")))
-  pw.println(Seq(
-    "top.curve",
-    "curve",
-    "dimensions",
-    "total.precision",
-    "plys",
-    "locality",
-    "normalized.locality",
-    "locality.inv",
-    "normalized.locality.inv",
-    "sample.size",
-    "sample.coverage"
-  ).mkString("\t"))
+object LocalityEstimatorStudy
+  extends MirroredTSV(
+    "/tmp/locality.tsv",
+    OutputMetadata(Seq(
+    ColumnSpec("top.curve", isQuoted = true),
+    ColumnSpec("curve", isQuoted = true),
+    ColumnSpec("dimensions", isQuoted = false),
+    ColumnSpec("total.precision", isQuoted = false),
+    ColumnSpec("plys", isQuoted = false),
+    ColumnSpec("locality", isQuoted = false),
+    ColumnSpec("normalized.locality", isQuoted = false),
+    ColumnSpec("locality.inv", isQuoted = false),
+    ColumnSpec("normalized.locality.inv", isQuoted = false),
+    ColumnSpec("sample.size", isQuoted = false),
+    ColumnSpec("sample.coverage", isQuoted = false)
+    )),
+    writeHeader = true
+  ) with App {
 
   def test(curve: ComposedCurve): Unit = {
     val loc = LocalityEstimator(curve).locality
@@ -36,8 +40,7 @@ object LocalityStudy extends App {
       loc.sampleSize,
       loc.coverage
     )
-    println(data.mkString(", "))
-    pw.println(data.mkString("\t"))
+    println(data)
   }
 
   for (totalPrecision <- 4 to 40 by 4) {
@@ -52,8 +55,7 @@ object LocalityStudy extends App {
 
     // 4D, vertical
     FactoryXYZT(totalPrecision, 3).getCurves.foreach(curve => test(curve))
-
   }
 
-  pw.close()
+  close()
 }
