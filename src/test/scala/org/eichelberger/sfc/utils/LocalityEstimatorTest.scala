@@ -1,14 +1,10 @@
 package org.eichelberger.sfc.utils
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.SpaceFillingCurve.SpaceFillingCurve
-import org.eichelberger.sfc.{RowMajorCurve, CompactHilbertCurve, ZCurve}
-import org.eichelberger.sfc.utils.LocalityEstimator.SampleItem
-import org.junit.Ignore
+import org.eichelberger.sfc.{CompactHilbertCurve, RowMajorCurve, ZCurve}
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.specs2.execute.Pending
 import org.specs2.mutable.Specification
+import org.specs2.runner.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class LocalityEstimatorTest extends Specification with LazyLogging {

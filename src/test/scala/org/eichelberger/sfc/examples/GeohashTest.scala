@@ -1,13 +1,13 @@
 package org.eichelberger.sfc.examples
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
+import org.eichelberger.sfc.SpaceFillingCurve._
+import org.eichelberger.sfc.study.composition.CompositionSampleData._
 import org.eichelberger.sfc.utils.Timing
 import org.eichelberger.sfc.{DefaultDimensions, Dimension}
-import org.eichelberger.sfc.SpaceFillingCurve._
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
-import org.eichelberger.sfc.study.composition.CompositionSampleData._
+import org.specs2.runner.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class GeohashTest extends Specification with LazyLogging {

@@ -8,8 +8,8 @@ import org.eichelberger.sfc.study.composition.XYZTPoint
 import org.eichelberger.sfc.utils.Timing._
 import org.joda.time.DateTime
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
+import org.specs2.runner.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class StackingVariantsTest extends Specification with LazyLogging {

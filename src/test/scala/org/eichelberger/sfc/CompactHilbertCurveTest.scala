@@ -4,8 +4,8 @@ import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.CompactHilbertCurve.Mask
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve, _}
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.specs2.mutable.Specification
+import org.specs2.runner.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class CompactHilbertCurveTest extends Specification with GenericCurveValidation with LazyLogging {
