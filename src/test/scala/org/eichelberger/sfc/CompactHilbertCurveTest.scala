@@ -174,7 +174,7 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
       timeTestOrderings() must beTrue
     }
 
-    "identify ranges from coordinate queries" >> {
+    "identify ranges from coordinate queries on square spaces" >> {
       val sfc = CompactHilbertCurve(OrdinalVector(4, 4))
       val query = Query(Seq(
         OrdinalRanges(OrdinalPair(1, 5)),
@@ -183,11 +183,31 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
       val ranges = sfc.getRangesCoveringQuery(query).toList
       ranges.zipWithIndex.foreach {
         case (range, i) =>
-          println(s"[z-curve query ranges $query] $i:  $range")
+          println(s"[h-curve query ranges $query] $i:  $range")
       }
 
       ranges.size must equalTo(6)
       ranges.map(_.size).sum must equalTo(35L)
+    }
+
+    "identify ranges from coordinate queries on non-square spaces" >> {
+      val sfc = CompactHilbertCurve(OrdinalVector(3, 5))
+      val query = Query(Seq(
+        OrdinalRanges(OrdinalPair(5, 7)),
+        OrdinalRanges(OrdinalPair(7, 10))
+      ))
+      val ranges = sfc.getRangesCoveringQuery(query).toList
+      ranges.zipWithIndex.foreach {
+        case (range, i) =>
+          println(s"[h-curve query ranges $query] $i:  $range")
+      }
+
+      ranges must equalTo(Seq(
+        OrdinalPair(42, 44),
+        OrdinalPair(113, 114),
+        OrdinalPair(119, 120),
+        OrdinalPair(123, 127)
+      ))
     }
   }
 }

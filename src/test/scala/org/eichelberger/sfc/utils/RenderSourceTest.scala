@@ -79,7 +79,7 @@ class RenderSourceTest extends Specification with LazyLogging {
         val hue: Float = (39.0 / 255.0).toFloat
         override val pw: PrintStream =
           new java.io.PrintStream(new BufferedOutputStream(new FileOutputStream(s"/tmp/$fileName.dot")))
-        override val drawNumbers = false
+        override val drawNumbers = true
         override val drawArrows = true
         override val cellShadingRamp = Option(ShadeRamp(
           new ShadeRampEndpoint(0L, hue, 0.0f, 0.1f),
