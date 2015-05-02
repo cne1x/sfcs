@@ -3,6 +3,8 @@ package org.eichelberger.sfc
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.CompactHilbertCurve.Mask
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve, _}
+import org.eichelberger.sfc.planners.{SquareQuadTreePlanner, RecursiveQuadTreePlanner}
+import org.eichelberger.sfc.utils.Timing
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -169,11 +171,7 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
   def createCurve(precisions: OrdinalNumber*): SpaceFillingCurve =
     CompactHilbertCurve(precisions.toOrdinalVector)
 
-  "compact Hilbert space-filling curves" should {
-    "satisfy the ordering constraints" >> {
-      timeTestOrderings() must beTrue
-    }
-
+  "Hilbert range planner" should {
     "identify ranges from coordinate queries on square spaces" >> {
       val sfc = CompactHilbertCurve(OrdinalVector(4, 4))
       val query = Query(Seq(
@@ -208,6 +206,30 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
         OrdinalPair(119, 120),
         OrdinalPair(123, 127)
       ))
+    }
+
+    "contrast query planner performance" >> {
+      val precisions = OrdinalVector(10, 30)
+      val query = Query(Seq(
+        OrdinalRanges(OrdinalPair(2, 28), OrdinalPair(101, 159)),
+        OrdinalRanges(OrdinalPair(1970, 2001))
+      ))
+
+      val sfcSquare = new CompactHilbertCurve(precisions) with SquareQuadTreePlanner
+      val (rangesSquare, msSquare) = Timing.time(() => sfcSquare.getRangesCoveringQuery(query).toList)
+      println(s"[RANGE-PLANNER SQUARE] elapsed time:  ${msSquare/1000.0} seconds")
+
+      val sfcRecursive = new CompactHilbertCurve(precisions) with RecursiveQuadTreePlanner
+      val (rangesRecursive, msRecursive) = Timing.time(() => sfcRecursive.getRangesCoveringQuery(query).toList)
+      println(s"[RANGE-PLANNER RECURSIVE] elapsed time:  ${msRecursive/1000.0} seconds")
+
+      rangesSquare must equalTo(rangesRecursive)
+    }
+  }
+
+  "compact Hilbert space-filling curves" should {
+    "satisfy the ordering constraints" >> {
+      timeTestOrderings() must beTrue
     }
   }
 }
