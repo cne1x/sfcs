@@ -7,6 +7,12 @@ trait SquareQuadTreePlanner {
 
   // this method should work for Compact Hilbert, but is too generic to
   // be very efficient
+
+  // imagine you asked yourself, "What is one of the slowest ways
+  // to identify query ranges that does not involve exhaustively
+  // iterating over all possible coordinate intersections?", and
+  // then wrote this code in answer
+
   override def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
     // quick check for "everything"
     if (isEverything(query))

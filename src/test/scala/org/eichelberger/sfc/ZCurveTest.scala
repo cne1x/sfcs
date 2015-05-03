@@ -3,6 +3,7 @@ package org.eichelberger.sfc
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.CompactHilbertCurve.Mask
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve, _}
+import org.eichelberger.sfc.utils.Timing
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -235,6 +236,20 @@ class ZCurveTest extends Specification with GenericCurveValidation with LazyLogg
           OrdinalPair(44, 44)
         )
       ) must beTrue
+    }
+
+    "simple performance estimate" >> {
+      val precisions = OrdinalVector(10, 30)
+      val query = Query(Seq(
+        OrdinalRanges(OrdinalPair(2, 28), OrdinalPair(101, 159)),
+        OrdinalRanges(OrdinalPair(19710507, 20010423))
+      ))
+      val z = ZCurve(precisions)
+
+      val (_, ms) = Timing.time(() => z.getRangesCoveringQuery(query))
+      println(s"[PLANNING PERFORMANCE ESTIMATE] ${ms/1000.0} seconds")
+
+      ms must beGreaterThanOrEqualTo(0L)
     }
   }
 

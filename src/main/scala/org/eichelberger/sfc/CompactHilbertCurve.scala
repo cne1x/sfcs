@@ -1,7 +1,7 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.planners.{RecursiveQuadTreePlanner, SquareQuadTreePlanner}
+import org.eichelberger.sfc.planners.{ZCurvePlanner, SquareQuadTreePlanner}
 import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
@@ -51,7 +51,7 @@ object CompactHilbertCurve {
   case class GrayCodeRankInverse(i: Long, g: Long)
 }
 
-case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCurve with RecursiveQuadTreePlanner with Lexicographic with LazyLogging {
+case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCurve with SquareQuadTreePlanner with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.CompactHilbertCurve._
 
   val name = "H"

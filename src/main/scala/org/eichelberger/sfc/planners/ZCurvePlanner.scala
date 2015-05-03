@@ -2,8 +2,12 @@ package org.eichelberger.sfc.planners
 
 import org.eichelberger.sfc.SpaceFillingCurve._
 
+import scala.collection.mutable
 
-trait RecursiveQuadTreePlanner {
+// @TODO this contains too many inverse-index operations for
+// a regular Z-order curve
+
+trait ZCurvePlanner {
   this: SpaceFillingCurve =>
 
   def dimExtentLT(a: (Int, OrdinalPair), b: (Int, OrdinalPair)): Boolean =
@@ -35,9 +39,9 @@ trait RecursiveQuadTreePlanner {
     full.toSeq
   }
 
-  val dims = (0 until n).toSeq
+  val dims = (0 until n).toList
 
-  def getExtents(prefix: OrdinalNumber, precision: Int): Seq[OrdinalPair] = {
+  def getExtents(prefix: OrdinalNumber, precision: Int, cacheOpt: Option[mutable.HashMap[OrdinalNumber, OrdinalVector]] = None): Seq[OrdinalPair] = {
     val remaining = OrdinalVector(getBitsRemainingPerDim(prefix, precision):_*)
 
     // the prefix, when padded to the full curve precision, represents
@@ -58,7 +62,15 @@ trait RecursiveQuadTreePlanner {
       })
 
     // compute the user-space coordinates for each of the corner index values
-    val points = cornerIdxs.map(inverseIndex)
+    val points = cornerIdxs.map(idx => {
+      cacheOpt.map { cache =>
+        cache.getOrElse(idx, {
+          val point = inverseIndex(idx)
+          cache.put(idx, point)
+          point
+        })
+      }.getOrElse(inverseIndex(idx))
+    })
 
     // extract coordinates per dimension
     val coordsPerDim = points.flatMap(point => point.toSeq.zipWithIndex).groupBy(_._2)
@@ -103,8 +115,10 @@ trait RecursiveQuadTreePlanner {
 
     // "prefix" is right-justified
 
+    val cache = collection.mutable.HashMap[OrdinalNumber, OrdinalVector]()
+    
     def  recursiveSearch(prefix: OrdinalNumber, precision: Int): Seq[OrdinalPair] = {
-      val extents = getExtents(prefix, precision)
+      val extents = getExtents(prefix, precision, Option(cache))
 
       // easy case:  this prefix does not overlap at all with the query
       if (queryIsDisjoint(query, extents))
