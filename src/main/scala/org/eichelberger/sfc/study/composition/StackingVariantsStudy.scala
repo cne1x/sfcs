@@ -288,4 +288,6 @@ object StackingVariantsStudy extends App {
       FactoryXY(totalPrecision).getCurves.map(curve => writeCharlottesvilleRanges(curve, curve.M))
     }
   }
+
+  printScalingResults()
 }

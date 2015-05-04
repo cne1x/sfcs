@@ -19,12 +19,12 @@ trait SquareQuadTreePlanner {
       return Seq(OrdinalPair(0, size - 1L)).iterator
 
     // for each dimension, partition the ranges into bin pairs
-    val covers = (0 until n).par.map(dimension => {
+    val covers = (0 until n).map(dimension => {
       val dimRanges: OrdinalRanges = query.toSeq(dimension)
       val dimCovers: Seq[OrdinalPair] =
         dimRanges.toSeq.flatMap(range => bitCoverages(range, precisions(dimension)))
       dimCovers
-    }).toIndexedSeq
+    })
 
     // cross all of the dimensions, finding the contiguous cubes
     val counts = OrdinalVector(covers.map(_.size.toOrdinalNumber):_*)
@@ -36,11 +36,15 @@ trait SquareQuadTreePlanner {
       }
       // use the minimum bin-size among these covers
       val incSize = coverList.map(_.max).min
+
+      //@TODO
+      if (incSize > 1) println(s"[SQUARE-QUAD] incSize $incSize")
+
       // cover all of the sub-cubes by this increment
       val lowerLeft = coverList.map(_.min)
       val counts = OrdinalVector(coverList.map(_.max / incSize):_*)
       val cubeCornerItr = combinationsIterator(counts)
-      val cubes = cubeCornerItr.map(cubeCorner => {
+      val innerCubes = cubeCornerItr.map(cubeCorner => {
         OrdinalRanges(lowerLeft.zip(cubeCorner.toSeq).map {
           case (left, factor) =>
             val cubeDimMin = left + incSize * factor
@@ -48,7 +52,7 @@ trait SquareQuadTreePlanner {
             OrdinalPair(cubeDimMin, cubeDimMax)
         }:_*)
       })
-      cubes
+      innerCubes
     })
 
     def isPoint(cube: OrdinalRanges): Boolean =
@@ -56,7 +60,7 @@ trait SquareQuadTreePlanner {
 
     // for each contiguous cube, find the corners, and return (min, max) as that cube's index range
     val dimFactors: List[OrdinalPair] = List.fill(n)(OrdinalPair(0, 1))
-    val ranges: Iterator[OrdinalPair] = cubes.toSeq.par.map(cube => {
+    val ranges: Iterator[OrdinalPair] = cubes.toSeq.map(cube => {
       // if this is a point, use it
       if (isPoint(cube)) {
         // this is a single point
@@ -73,7 +77,7 @@ trait SquareQuadTreePlanner {
               if (zeroOne == 0L) cubeDimRange.min else cubeDimRange.max
           }.toOrdinalVector
         })
-        val indexes = corners.toSeq.par.map(index)
+        val indexes = corners.toSeq.map(index)
         // pick out the (min, max) among all of these index values
         val extrema = indexes.foldLeft((Long.MaxValue, Long.MinValue))((acc, idx) => acc match {
           case (minSoFar, maxSoFar) =>

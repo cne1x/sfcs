@@ -181,7 +181,7 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
       val ranges = sfc.getRangesCoveringQuery(query).toList
       ranges.zipWithIndex.foreach {
         case (range, i) =>
-          println(s"[h-curve query ranges $query] $i:  $range")
+          println(s"[h-curve square query ranges $query] $i:  $range")
       }
 
       ranges.size must equalTo(6)
@@ -197,7 +197,7 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
       val ranges = sfc.getRangesCoveringQuery(query).toList
       ranges.zipWithIndex.foreach {
         case (range, i) =>
-          println(s"[h-curve query ranges $query] $i:  $range")
+          println(s"[h-curve off-square query ranges $query] $i:  $range")
       }
 
       ranges must equalTo(Seq(
@@ -209,9 +209,9 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
     }
   }
 
-  "compact Hilbert space-filling curves" should {
-    "satisfy the ordering constraints" >> {
-      timeTestOrderings() must beTrue
-    }
-  }
+//  "compact Hilbert space-filling curves" should {
+//    "satisfy the ordering constraints" >> {
+//      timeTestOrderings() must beTrue
+//    }
+//  }
 }

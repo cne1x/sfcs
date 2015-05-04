@@ -1,10 +1,12 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.planners.{ZCurvePlanner, SquareQuadTreePlanner}
+import org.eichelberger.sfc.planners.{QuadTreePlanner, ZCurvePlanner, SquareQuadTreePlanner}
 import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
+
+import scala.collection.mutable
 
 // algorithm transcribed from pseudo-code contained in
 //   "Compact Hilbert Indices for Multi-Dimensional Data"
@@ -51,7 +53,7 @@ object CompactHilbertCurve {
   case class GrayCodeRankInverse(i: Long, g: Long)
 }
 
-case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCurve with SquareQuadTreePlanner with Lexicographic with LazyLogging {
+abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends SpaceFillingCurve with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.CompactHilbertCurve._
 
   val name = "H"
@@ -189,15 +191,6 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
   */
 
   def index(point: OrdinalVector): OrdinalNumber = {
-    // sanity check
-    require(point.size == n, s"You cannot index a point whose rank (${point.size}) is not equal to the space's rank ($n).")
-    var ii = 0; while (ii < n) {
-      val xi = point(ii)
-      val maxSize = sizes(ii)
-      require(xi < maxSize, s"You cannot index a dimension whose $ii-th dimension value ($xi) exceeds the cardinality for that dimension ($maxSize).")
-      ii = ii + 1
-    }
-
     var h = 0L
     var e = 0L
     var d = 0L
@@ -236,9 +229,16 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
     var ell = 0L
     var pi = 0L
     var i = m - 1
+    var b = 0
+    var bitSeq: Seq[Int] = Nil
+    var j = 0
     while (i >= 0) {
       mu = extractMask(i, d)
-      r = seq2long((mu.size to 1 by -1).map(b => bitAt(h, (M - k - b).toInt).toInt))
+      bitSeq = Nil; b = mu.size; while (b >= 1) {
+        bitSeq = bitSeq :+ bitAt(h, (M - k - b).toInt).toInt
+        b = b - 1
+      }
+      r = seq2long(bitSeq)
       k = k + mu.size
 
       pi = barrelShiftRight(e, d) & ~mu.value & ValidBitsMask
@@ -247,8 +247,10 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
       w = wg.i
       g = wg.g
       ell = invT(e, d)(g)
-      for (j <- 0 until n) {
-        p = p.set(j, setBitAt(p(j), i, bitAt(ell, j).toInt).toInt)
+      j = 0
+      while (j < n) {
+        p = p.set(j, setBitAt(p(j), i, bitAt(ell, j).toInt))
+        j = j + 1
       }
       e = e ^ barrelShiftLeft(entry(w), d)
       d = (d + nextDim(w) + 1) % n
@@ -257,6 +259,111 @@ case class CompactHilbertCurve(precisions: OrdinalVector) extends SpaceFillingCu
     }
 
     p
+  }
+}
+
+// sustains old behavior while we experiment with alternate planners
+case class CompactHilbertCurve(override val precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with SquareQuadTreePlanner
+
+class OldCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with SquareQuadTreePlanner
+
+class NewCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with QuadTreePlanner {
+  private[this] val indexCache = collection.mutable.HashMap[OrdinalVector, OrdinalNumber]()
+
+  def getOrComputeIndex(point: OrdinalVector): OrdinalNumber =
+    indexCache.getOrElseUpdate(point, index(point))
+
+  override def getRanges(prefix: OrdinalNumber, precision: Int): Seq[OrdinalPair] = {
+    // initialize the full range
+    val dimRanges = new collection.mutable.ArrayBuffer[OrdinalPair]()
+    cardinalities.toSeq.foreach { c => dimRanges.append(OrdinalPair(0, c - 1L)) }
+
+    // divide the ranges according to the bits already in the prefix
+    var numBitsRemaining = precisions
+    var bitPos = 0
+    var i = 0
+    while (i < precision) {
+      // adjust this range
+      val oldRange = dimRanges(bitPos)
+      val bit = (prefix >> (precision - i - 1)) & 1L
+      if (bit == 1L) {
+        // upper half of the remaining range
+        dimRanges(bitPos) = OrdinalPair(
+          1L + ((oldRange.max + oldRange.min) >> 1L),
+          oldRange.max
+        )
+      } else {
+        // lower half of the remaining range
+        dimRanges(bitPos) = OrdinalPair(
+          oldRange.min,
+          (oldRange.max + oldRange.min) >> 1L
+        )
+      }
+
+      // decrement this counter
+      numBitsRemaining = numBitsRemaining.set(bitPos, numBitsRemaining(bitPos) - 1)
+
+      i = i + 1
+
+      // update bitPos
+      bitPos = (bitPos + 1) % n
+      while (i < precision && numBitsRemaining(bitPos) < 1) {
+        bitPos = (bitPos + 1) % n
+      }
+    }
+
+    // short-cut for single-point lookup
+    if (precision == M) {
+      val idx = getOrComputeIndex(OrdinalVector(dimRanges.map(_.min):_*))
+      return Seq(OrdinalPair(idx, idx))
+    }
+
+    //@TODO
+    println(s"[NEW QUAD] ($prefix, $precision) -> $dimRanges")
+
+    // Hilbert progression is only guaranteed to be contiguous on square sub-blocks
+
+    //val smallestIncrement = 1L << numBitsRemaining.toSeq.filter(_ > 0).min
+    val smallestIncrement = 1L << numBitsRemaining.toSeq.min
+
+    // how many steps can you take from the lowest cell in USER space to the highest by this smallest increment?
+    val stepsPerDim = dimRanges.map {
+      case OrdinalPair(a, b) => (b - a + 1) / smallestIncrement
+    }
+
+    // identify the sub-cubes
+    val LL = OrdinalVector(dimRanges.map { case OrdinalPair(a, b) => a }:_*)
+    val cubeCounts = combinationsIterator(OrdinalVector(stepsPerDim:_*))
+    val cubeLLs = cubeCounts.map(steps => {
+      OrdinalVector(LL.zipWith(steps).map {
+        case (start, numSteps) => start + smallestIncrement * numSteps
+      }:_*)
+    })
+
+    // short-cut for points
+    if (smallestIncrement == 1) {
+      val idxSingletons = cubeLLs.map(getOrComputeIndex).map(idx => OrdinalPair(idx, idx))
+      idxSingletons.toSeq
+    } else {
+      //@TODO
+      println(s"smallest $smallestIncrement")
+
+      // the minimum increment is larger than 1
+      val toggles = OrdinalVector(List.fill(n)(2L):_*)
+      val cubeRanges = cubeLLs.map(cubeLL => {
+        val points = combinationsIterator(toggles).map(toggle => {
+          val point = cubeLL.zipWith(toggle).map {
+            case (x, factor) => x + (smallestIncrement - 1) * factor
+          }
+          OrdinalVector(point:_*)
+        }).toList
+        val idxs = points.map(point => getOrComputeIndex(point))
+
+        OrdinalPair(idxs.min, idxs.max)
+      })
+
+      cubeRanges.toSeq
+    }
   }
 }
 

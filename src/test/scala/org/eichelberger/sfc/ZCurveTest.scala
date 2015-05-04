@@ -130,22 +130,6 @@ class ZCurveTest extends Specification with GenericCurveValidation with LazyLogg
       z.queryIsDisjoint(query, Seq(OrdinalPair(0, 1), OrdinalPair(0, 1))) must beTrue
     }
 
-    "compute bits remaining" >> {
-      // everything
-      z.getBitsRemainingPerDim(0, 0) must equalTo(z.precisions.toSeq)
-      z.getBitsRemainingPerDim(1, 0) must equalTo(z.precisions.toSeq)
-
-      // knock off two bits
-      val remaining_after_2 = Seq[OrdinalNumber](0, 2, 7)
-      z.getBitsRemainingPerDim(0, 2) must equalTo(remaining_after_2)
-      z.getBitsRemainingPerDim(1, 2) must equalTo(remaining_after_2)
-
-      // knock off five bits
-      val remaining_after_5 = Seq[OrdinalNumber](0, 1, 5)
-      z.getBitsRemainingPerDim(0, 5) must equalTo(remaining_after_5)
-      z.getBitsRemainingPerDim(1, 5) must equalTo(remaining_after_5)
-    }
-
     "compute extents" >> {
       def testExtent(prefix: OrdinalNumber, precision: Int, expected: Seq[OrdinalPair]) = {
         val extent = z.getExtents(prefix, precision)
@@ -236,20 +220,6 @@ class ZCurveTest extends Specification with GenericCurveValidation with LazyLogg
           OrdinalPair(44, 44)
         )
       ) must beTrue
-    }
-
-    "simple performance estimate" >> {
-      val precisions = OrdinalVector(10, 30)
-      val query = Query(Seq(
-        OrdinalRanges(OrdinalPair(2, 28), OrdinalPair(101, 159)),
-        OrdinalRanges(OrdinalPair(19710507, 20010423))
-      ))
-      val z = ZCurve(precisions)
-
-      val (_, ms) = Timing.time(() => z.getRangesCoveringQuery(query))
-      println(s"[PLANNING PERFORMANCE ESTIMATE] ${ms/1000.0} seconds")
-
-      ms must beGreaterThanOrEqualTo(0L)
     }
   }
 
