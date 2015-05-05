@@ -70,7 +70,7 @@ trait OffSquareQuadTreePlanner {
         val minSpan = cube.toSeq.map {
           case OrdinalPair(a, b) => b - a + 1
         }.min
-        val precisionFree = (Math.round(Math.log(minSpan) / Math.log(2.0)).toInt) << 1
+        val precisionFree = Math.round(Math.log(minSpan) / Math.log(2.0)).toInt * n
         val point = OrdinalVector(cube.toSeq.map(_.min):_*)
         val idx = index(point)
         val idxBase = idx >>> precisionFree
