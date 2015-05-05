@@ -3,7 +3,7 @@ package org.eichelberger.sfc
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.CompactHilbertCurve.Mask
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve, _}
-import org.eichelberger.sfc.planners.{SquareQuadTreePlanner, ZCurvePlanner}
+import org.eichelberger.sfc.planners.{OffSquareQuadTreePlanner, ZCurvePlanner}
 import org.eichelberger.sfc.utils.Timing
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
@@ -184,8 +184,14 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
           println(s"[h-curve square query ranges $query] $i:  $range")
       }
 
-      ranges.size must equalTo(6)
-      ranges.map(_.size).sum must equalTo(35L)
+      ranges must equalTo(Seq(
+        OrdinalPair(22, 27),
+        OrdinalPair(36, 39),
+        OrdinalPair(202, 203),
+        OrdinalPair(216, 233),
+        OrdinalPair(237, 238),
+        OrdinalPair(243, 245)
+      ))
     }
 
     "identify ranges from coordinate queries on non-square spaces" >> {

@@ -1,7 +1,7 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.planners.{QuadTreePlanner, ZCurvePlanner}
+import org.eichelberger.sfc.planners.{SquareQuadTreePlanner, ZCurvePlanner}
 import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics._
 import org.eichelberger.sfc.SpaceFillingCurve._
@@ -10,7 +10,7 @@ object ZCurve {
   def apply(x: OrdinalNumber*): ZCurve = new ZCurve(OrdinalVector(x: _*))
 }
 
-case class ZCurve(precisions: OrdinalVector) extends SpaceFillingCurve with QuadTreePlanner with Lexicographic with LazyLogging {
+case class ZCurve(precisions: OrdinalVector) extends SpaceFillingCurve with SquareQuadTreePlanner with Lexicographic with LazyLogging {
   import org.eichelberger.sfc.ZCurve._
 
   val name = "Z"
@@ -54,4 +54,7 @@ case class ZCurve(precisions: OrdinalVector) extends SpaceFillingCurve with Quad
     }
     vector
   }
+
+  def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] =
+    getRangesCoveringQueryOnSquare(query)
 }

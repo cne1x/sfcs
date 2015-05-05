@@ -2,90 +2,148 @@ package org.eichelberger.sfc.planners
 
 import org.eichelberger.sfc.SpaceFillingCurve._
 
+import scala.collection.mutable
+
+// this works well for planning Hilbert curves on square
+// spaces
+
 trait SquareQuadTreePlanner {
   this: SpaceFillingCurve =>
 
-  // this method should work for Compact Hilbert, but is too generic to
+  def getBitsRemainingPerDim(prefix: OrdinalNumber, precision: Int): Seq[OrdinalNumber] = {
+    var full = precisions
+    var bitPos = 0
+    var i = 0
+    while (i < precision) {
+      // decrement this counter
+      full = full.set(bitPos, full(bitPos) - 1)
+
+      i = i + 1
+
+      // update bitPos
+      bitPos = (bitPos + 1) % n
+      while (i < precision && full(bitPos) < 1) {
+        bitPos = (bitPos + 1) % n
+      }
+    }
+
+    full.toSeq
+  }
+
+  def getRange(prefix: OrdinalNumber, precision: Int): OrdinalPair =
+    OrdinalPair(
+      prefix << (M - precision),
+      ((prefix + 1L) << (M - precision)) - 1L
+    )
+
+  def getRanges(prefix: OrdinalNumber, precision: Int): Seq[OrdinalPair] =
+    Seq(getRange(prefix, precision))
+
+  def getExtents(prefix: OrdinalNumber, precision: Int, cacheOpt: Option[mutable.HashMap[OrdinalNumber, OrdinalVector]] = None): Seq[OrdinalPair] = {
+    // quad-trees use interval-halving per bit per dimension
+
+    // initialize the full range
+    val dimRanges = new collection.mutable.ArrayBuffer[OrdinalPair]()
+    cardinalities.toSeq.foreach { c => dimRanges.append(OrdinalPair(0, c - 1L)) }
+
+    // divide the ranges according to the bits already in the prefix
+    var numBitsRemaining = precisions
+    var bitPos = 0
+    var i = 0
+    while (i < precision) {
+      // adjust this range
+      val oldRange = dimRanges(bitPos)
+      val bit = (prefix >> (precision - i - 1)) & 1L
+      if (bit == 1L) {
+        // upper half of the remaining range
+        dimRanges(bitPos) = OrdinalPair(
+          1L + ((oldRange.max + oldRange.min) >> 1L),
+          oldRange.max
+        )
+      } else {
+        // lower half of the remaining range
+        dimRanges(bitPos) = OrdinalPair(
+          oldRange.min,
+          (oldRange.max + oldRange.min) >> 1L
+        )
+      }
+
+      // decrement this counter
+      numBitsRemaining = numBitsRemaining.set(bitPos, numBitsRemaining(bitPos) - 1)
+
+      i = i + 1
+
+      // update bitPos
+      bitPos = (bitPos + 1) % n
+      while (i < precision && numBitsRemaining(bitPos) < 1) {
+        bitPos = (bitPos + 1) % n
+      }
+    }
+
+    dimRanges
+  }
+
+  def isPairSupersetOfPair(qPair: OrdinalPair, iPair: OrdinalPair): Boolean =
+    iPair.min >= qPair.min && iPair.max <= qPair.max
+
+  def pairsAreDisjoint(qPair: OrdinalPair, iPair: OrdinalPair): Boolean =
+    qPair.max < iPair.min || qPair.min > iPair.max
+
+  def queryCovers(query: Query, extents: Seq[OrdinalPair]): Boolean = {
+    query.toSeq.zip(extents).foreach {
+      case (dimRanges, ordPair) =>
+        if (!dimRanges.toSeq.exists(qPair => isPairSupersetOfPair(qPair, ordPair)))
+          return false
+    }
+    true
+  }
+
+  def queryIsDisjoint(query: Query, extents: Seq[OrdinalPair]): Boolean = {
+    query.toSeq.zip(extents).foreach {
+      case (dimRanges, ordPair) =>
+        if (dimRanges.toSeq.forall(qPair => pairsAreDisjoint(qPair, ordPair)))
+          return true
+    }
+    false
+  }
+
+  // this method should work for the Z-curve, but is too generic to
   // be very efficient
-
-  // imagine you asked yourself, "What is one of the slowest ways
-  // to identify query ranges that does not involve exhaustively
-  // iterating over all possible coordinate intersections?", and
-  // then wrote this code in answer
-
-  override def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] = {
+  def getRangesCoveringQueryOnSquare(query: Query): Iterator[OrdinalPair] = {
     // quick check for "everything"
     if (isEverything(query))
       return Seq(OrdinalPair(0, size - 1L)).iterator
 
-    // for each dimension, partition the ranges into bin pairs
-    val covers = (0 until n).map(dimension => {
-      val dimRanges: OrdinalRanges = query.toSeq(dimension)
-      val dimCovers: Seq[OrdinalPair] =
-        dimRanges.toSeq.flatMap(range => bitCoverages(range, precisions(dimension)))
-      dimCovers
-    })
+    // "prefix" is right-justified
 
-    // cross all of the dimensions, finding the contiguous cubes
-    val counts = OrdinalVector(covers.map(_.size.toOrdinalNumber):_*)
-    val itr = combinationsIterator(counts)
-    val cubes: Iterator[OrdinalRanges] = itr.flatMap(combination => {
-      // assemble the list of coverages from the combination
-      val coverList = combination.toSeq.zipWithIndex.map {
-        case (coord, dimension) => covers(dimension).toSeq(coord.toInt)
-      }
-      // use the minimum bin-size among these covers
-      val incSize = coverList.map(_.max).min
+    val cache = collection.mutable.HashMap[OrdinalNumber, OrdinalVector]()
 
-      //@TODO
-      if (incSize > 1) println(s"[SQUARE-QUAD] incSize $incSize")
+    def  recursiveSearch(prefix: OrdinalNumber, precision: Int): Seq[OrdinalPair] = {
+      val extents = getExtents(prefix, precision, Option(cache))
 
-      // cover all of the sub-cubes by this increment
-      val lowerLeft = coverList.map(_.min)
-      val counts = OrdinalVector(coverList.map(_.max / incSize):_*)
-      val cubeCornerItr = combinationsIterator(counts)
-      val innerCubes = cubeCornerItr.map(cubeCorner => {
-        OrdinalRanges(lowerLeft.zip(cubeCorner.toSeq).map {
-          case (left, factor) =>
-            val cubeDimMin = left + incSize * factor
-            val cubeDimMax = left + incSize * (factor + 1L) - 1L
-            OrdinalPair(cubeDimMin, cubeDimMax)
-        }:_*)
-      })
-      innerCubes
-    })
+      // easy case:  this prefix does not overlap at all with the query
+      if (queryIsDisjoint(query, extents))
+        return Seq()
 
-    def isPoint(cube: OrdinalRanges): Boolean =
-      cube.toSeq.head.min == cube.toSeq.head.max
+      // easy case:  this prefix is entirely contained within the query
+      if (queryCovers(query, extents))
+        return getRanges(prefix, precision)
 
-    // for each contiguous cube, find the corners, and return (min, max) as that cube's index range
-    val dimFactors: List[OrdinalPair] = List.fill(n)(OrdinalPair(0, 1))
-    val ranges: Iterator[OrdinalPair] = cubes.toSeq.map(cube => {
-      // if this is a point, use it
-      if (isPoint(cube)) {
-        // this is a single point
-        val coord: OrdinalVector = cube.toSeq.map(_.min).toOrdinalVector
-        val idx = index(coord)
-        OrdinalPair(idx, idx)
-      }
-      else {
-        // this doesn't represent a single point, so consider all corners
-        val corners = combinationsIterator(dimFactors).map(vec => {
-          vec.toSeq.zipWithIndex.map {
-            case (zeroOne, dimension) =>
-              val cubeDimRange = cube.toSeq(dimension)
-              if (zeroOne == 0L) cubeDimRange.min else cubeDimRange.max
-          }.toOrdinalVector
-        })
-        val indexes = corners.toSeq.map(index)
-        // pick out the (min, max) among all of these index values
-        val extrema = indexes.foldLeft((Long.MaxValue, Long.MinValue))((acc, idx) => acc match {
-          case (minSoFar, maxSoFar) =>
-            (Math.min(minSoFar, idx), Math.max(maxSoFar, idx))
-        })
-        OrdinalPair(extrema._1, extrema._2)
-      }
-    }).toIterator
+      // the prefix does overlap, but only partially, with the query
+
+      // check for precision exhaustion
+      if (precision == M)
+        return getRanges(prefix, precision)
+      require(precision < M, s"Precision overflow:  $precision >= $M")
+
+      // recurse
+      Seq(
+        recursiveSearch(prefix << 1L, precision + 1),
+        recursiveSearch((prefix << 1L) + 1L, precision + 1)
+      ).flatten
+    }
+
+    val ranges = recursiveSearch(0L, 0).iterator
 
     consolidatedRangeIterator(ranges)
   }

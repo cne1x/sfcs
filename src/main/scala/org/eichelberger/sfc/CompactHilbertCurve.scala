@@ -1,7 +1,7 @@
 package org.eichelberger.sfc
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
-import org.eichelberger.sfc.planners.{QuadTreePlanner, ZCurvePlanner, SquareQuadTreePlanner}
+import org.eichelberger.sfc.planners.{SquareQuadTreePlanner, ZCurvePlanner, OffSquareQuadTreePlanner}
 import org.eichelberger.sfc.utils.Lexicographics
 import Lexicographics.Lexicographic
 import org.eichelberger.sfc.SpaceFillingCurve._
@@ -263,11 +263,13 @@ abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends Sp
 }
 
 // sustains old behavior while we experiment with alternate planners
-case class CompactHilbertCurve(override val precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with SquareQuadTreePlanner
+case class CompactHilbertCurve(override val precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with OffSquareQuadTreePlanner with SquareQuadTreePlanner {
+  lazy val isSquare = precisions.min == precisions.max
 
-class OldCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with SquareQuadTreePlanner
+  override def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair] =
+    if (isSquare) getRangesCoveringQueryOnSquare(query)
+    else getRangesCoveringQueryOffSquare(query)
 
-class NewCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbertCurve(precisions) with QuadTreePlanner {
   private[this] val indexCache = collection.mutable.HashMap[OrdinalVector, OrdinalNumber]()
 
   def getOrComputeIndex(point: OrdinalVector): OrdinalNumber =
@@ -318,9 +320,6 @@ class NewCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbe
       return Seq(OrdinalPair(idx, idx))
     }
 
-    //@TODO
-    println(s"[NEW QUAD] ($prefix, $precision) -> $dimRanges")
-
     // Hilbert progression is only guaranteed to be contiguous on square sub-blocks
 
     //val smallestIncrement = 1L << numBitsRemaining.toSeq.filter(_ > 0).min
@@ -345,9 +344,6 @@ class NewCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbe
       val idxSingletons = cubeLLs.map(getOrComputeIndex).map(idx => OrdinalPair(idx, idx))
       idxSingletons.toSeq
     } else {
-      //@TODO
-      println(s"smallest $smallestIncrement")
-
       // the minimum increment is larger than 1
       val toggles = OrdinalVector(List.fill(n)(2L):_*)
       val cubeRanges = cubeLLs.map(cubeLL => {
@@ -366,4 +362,3 @@ class NewCompactHilbertCurve(precisions: OrdinalVector) extends BaseCompactHilbe
     }
   }
 }
-

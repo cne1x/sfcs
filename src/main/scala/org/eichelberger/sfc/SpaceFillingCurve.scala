@@ -14,6 +14,7 @@ object SpaceFillingCurve {
     def apply(i: Int): OrdinalNumber = x(i)
     def apply(i: OrdinalNumber): OrdinalNumber = x(i.toInt)
     def apply(v: OrdinalVector): OrdinalVector = new OrdinalVector(v.toSeq:_*)
+    def min: OrdinalNumber = x.min
     def max: OrdinalNumber = x.max
     def product: OrdinalNumber = x.product
     def numBits: Int = Math.ceil(Math.log(product) / Math.log(2.0)).toInt
