@@ -6,21 +6,25 @@ import java.io.{PrintStream, PrintWriter}
 import org.eichelberger.sfc.SpaceFillingCurve._
 
 trait RenderTarget {
-  def beforeRendering(sfc: RenderSource): Unit
-  def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit
-  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit
-  def beforeCol(sfc: RenderSource, col: OrdinalNumber): Unit
-  def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector)
-  def afterCol(sfc: RenderSource, col: OrdinalNumber): Unit
-  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit
-  def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit
-  def afterRendering(sfc: RenderSource): Unit
+  def beforeRendering(sfc: RenderSource): Unit = {}
+  def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {}
+  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
+  def beforeCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
+  def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {}
+  def afterCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
+  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
+  def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {}
+  def afterRendering(sfc: RenderSource): Unit = {}
 }
 
 trait RenderSource {
   this: SpaceFillingCurve =>
 
   def getCurveName: String
+
+  def numCells: Long = size
+
+  def useSlices: Boolean = true
 
   def indexBounds: Seq[OrdinalPair] =
     precisions.toSeq.map(p => OrdinalPair(0L, (1L << p) - 1L))
@@ -32,9 +36,7 @@ trait RenderSource {
   def terminalIndexBounds: Seq[OrdinalPair] =
     indexBounds.takeRight(Math.min(2, precisions.size))
 
-  def render(target: RenderTarget) = {
-    target.beforeRendering(this)
-
+  def renderSlices(target: RenderTarget) = {
     // loop over all dimensions higher than 2
     val slices = combinationsIterator(nonTerminalIndexBounds)
     while (slices.hasNext) {
@@ -69,6 +71,35 @@ trait RenderSource {
       // finish this slice
       target.afterSlice(this, slice)
     }
+  }
+
+  def renderWhole(target: RenderTarget) = {
+    // dump this 1- or 2-d slice
+    var row = -1L
+    val cellItr = combinationsIterator(indexBounds)
+    while (cellItr.hasNext) {
+      val cell: OrdinalVector = cellItr.next()
+      val idx = index(cell)
+
+      // switch rows
+      if (row != cell.toSeq.head) {
+        if (row != -1L) target.afterRow(this, row)
+        row = cell.toSeq.head
+        target.beforeRow(this, row)
+      }
+
+      // print cell
+      target.renderCell(this, idx, cell)
+    }
+
+    target.afterRow(this, row)
+  }
+
+  def render(target: RenderTarget) = {
+    target.beforeRendering(this)
+
+    if (useSlices) renderSlices(target)
+    else renderWhole(target)
 
     target.afterRendering(this)
   }
@@ -81,9 +112,9 @@ class ScreenRenderTarget extends RenderTarget {
   var numRows: Long = 0L
   var numCols: Long = 0L
 
-  def beforeRendering(sfc: RenderSource): Unit = {}
+  override def beforeRendering(sfc: RenderSource): Unit = {}
 
-  def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
+  override def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
     pw.println(s"\n[${sfc.getCurveName}:  SLICE $slice ]")
 
     val (nr: Long, nc: Long) = sfc.terminalIndexBounds.size match {
@@ -94,23 +125,19 @@ class ScreenRenderTarget extends RenderTarget {
     numRows = nr; numCols = nc
   }
 
-  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
+  override def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
     pw.print(s" ${format(row)} | ")
   }
 
-  def beforeCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
-
-  def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
+  override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
     pw.print(s"${format(index)} | ")
   }
 
-  def afterCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
-
-  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
+  override def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {
     pw.println()
   }
 
-  def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
+  override def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
     // print the X axis
     separate(pw, numCols.toInt)
     pw.println()
@@ -120,10 +147,6 @@ class ScreenRenderTarget extends RenderTarget {
     }
     pw.println()
   }
-
-  def afterRendering(sfc: RenderSource): Unit = {}
-
-  def closePrintStream(): Unit = {}
 
   def format(x: Long): String = x.formatted("%4d")
 
@@ -193,14 +216,14 @@ class GraphvizRenderTarget extends RenderTarget {
 
   def qw(s: String) = "\"" + s + "\""
 
-  def beforeRendering(sfc: RenderSource): Unit = {
+  override def beforeRendering(sfc: RenderSource): Unit = {
     pw.println("// to render correctly:\n//  neato -n input.dot -Tpng -o output.png")
     pw.println("digraph G {")
     pw.println("\toutputorder=\"nodesfirst\"")
     pw.println("\tnode [ shape=\"square\" width=\"1.058\" labelloc=\"c\" fontsize=\"30\" color=\"#000000\"]")
   }
 
-  def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
+  override def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
     pw.println(s"\n\tsubgraph {")
     pw.println("\tedge [ constraint=\"false\" tailclip=\"false\" headclip=\"false\" color=\"#000000FF\" ]")
     //pw.println(s"<h1>${sfc.getCurveName}:  SLICE $slice</h1>")  //@TODO resolve how to print slice titles
@@ -213,11 +236,7 @@ class GraphvizRenderTarget extends RenderTarget {
     numRows = nr; numCols = nc
   }
 
-  def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
-
-  def beforeCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
-
-  def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
+  override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
     if (drawArrows)
       if (index >= 1L) pw.println(s"\t\tnode_${index - 1L} -> node_$index")
 
@@ -232,15 +251,44 @@ class GraphvizRenderTarget extends RenderTarget {
     pw.println(s"\t\tnode_$index [ $label pos=${qw(x.toString + "," + y.toString)} $shading ]")
   }
 
-  def afterCol(sfc: RenderSource, col: OrdinalNumber): Unit = {}
-
-  def afterRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
-
-  def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
+  override def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
     pw.println(s"\t}")  // end subgraph
   }
 
-  def afterRendering(sfc: RenderSource): Unit = {
+  override def afterRendering(sfc: RenderSource): Unit = {
     pw.println("}")  // end graph
+  }
+}
+
+
+// write an include file suitable for use in a larger
+// Persistence of Vision Raytracer scene
+//
+// only position information is written; no styling
+class PovrayRenderTarget extends RenderTarget {
+  val pw: PrintStream = System.out
+
+  var povCurveName: String = "UNKNOWN"
+
+  def qw(s: String) = "\"" + s + "\""
+
+  override def beforeRendering(sfc: RenderSource): Unit = {
+    povCurveName = sfc.getCurveName.replaceAll("[^a-zA-Z0-9]", "_").toUpperCase
+
+    pw.println("// include file for POV-Ray")
+    pw.println(s"// curve name:  ${sfc.getCurveName}")
+
+    pw.println("\n// curve_cells[CellNo][0]:  X coord")
+    pw.println("// curve_cells[CellNo][1]:  Y coord")
+    pw.println("// curve_cells[CellNo][2]:  Z coord")
+
+    pw.println(s"\n#declare num_curve_cells = ${sfc.numCells};")
+
+    pw.println(s"\n#declare curve_cells = array[${sfc.numCells}][3];")
+  }
+
+  override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
+    val items = (0 to 2).map { i => s"#declare curve_cells[$index][$i] = ${point(i)};" }
+    pw.println(items.mkString("  "))
   }
 }

@@ -215,9 +215,54 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
     }
   }
 
-//  "compact Hilbert space-filling curves" should {
-//    "satisfy the ordering constraints" >> {
-//      timeTestOrderings() must beTrue
-//    }
-//  }
+  "3D Hilbert curves" should {
+    def testConsecutive(h: CompactHilbertCurve, failFast: Boolean = true): Boolean = {
+      val testName = h.name + h.precisions.toSeq.mkString("(", ",", ")")
+      println(s"Evaluating consecutive indexes for $testName...")
+
+      var lastCell = h.inverseIndex(0)
+      var idx = 1L
+      var numFailures = 0
+      while (idx < h.size) {
+        val cell = h.inverseIndex(idx)
+        val dists = cell.zipWith(lastCell).map {
+          case (a, b) => Math.abs(a - b)
+        }
+        val dist = dists.sum
+        if (dist > 1)
+          println(Seq(
+            testName,
+            idx - 1,
+            "[" + lastCell + "]",
+            idx,
+            "[" + cell + "]",
+            dist,
+            dists.mkString("[", ", ", "]")
+          ).mkString("\t"))
+        if (failFast)
+          require(dist == 1, s"Step between ${idx-1} and $idx yielded distance $dist <- $dists")
+        if (dist != 1) numFailures += 1
+        idx = idx + 1L
+        lastCell = cell
+      }
+      numFailures == 0
+    }
+
+    "never step more than 1 unit between successive cells in square cubes" >> {
+      for (i <- 1 to 4) {
+        testConsecutive(CompactHilbertCurve(i, i), failFast = false) must beTrue
+        testConsecutive(CompactHilbertCurve(i, i, i), failFast = false) must beTrue
+        testConsecutive(CompactHilbertCurve(i, i, i, i), failFast = false) must beTrue
+        testConsecutive(CompactHilbertCurve(i, i, i, i, i), failFast = false) must beTrue
+      }
+
+      1 must equalTo(1)
+    }.pendingUntilFixed("This is very strange.")  //@TODO EXTREMELY HIGH PRIORITY!
+  }
+
+  "compact Hilbert space-filling curves" should {
+    "satisfy the ordering constraints" >> {
+      timeTestOrderings() must beTrue
+    }
+  }
 }
