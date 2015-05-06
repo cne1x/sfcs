@@ -248,6 +248,18 @@ class CompactHilbertCurveTest extends Specification with GenericCurveValidation 
       numFailures == 0
     }
 
+    "handle H(2,2,2) tests cases properly" >> {
+      val hc = CompactHilbertCurve(2, 2, 2)
+      hc.inverseIndex(40) should beEqualTo(OrdinalVector(2, 3, 3))
+      hc.inverseIndex(41) should beEqualTo(OrdinalVector(2, 3, 2))
+      hc.inverseIndex(42) should beEqualTo(OrdinalVector(3, 3, 2))
+      hc.inverseIndex(43) should beEqualTo(OrdinalVector(3, 3, 3))
+      hc.inverseIndex(44) should beEqualTo(OrdinalVector(3, 2, 3))
+      hc.inverseIndex(45) should beEqualTo(OrdinalVector(3, 2, 2))
+      hc.inverseIndex(46) should beEqualTo(OrdinalVector(2, 2, 2))
+      hc.inverseIndex(47) should beEqualTo(OrdinalVector(2, 2, 3))
+    }
+
     "never step more than 1 unit between successive cells in square cubes" >> {
       for (i <- 1 to 4) {
         testConsecutive(CompactHilbertCurve(i, i), failFast = false) must beTrue
