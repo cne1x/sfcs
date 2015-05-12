@@ -91,6 +91,8 @@ class RenderSourceTest extends Specification with LazyLogging {
         }
       }
 
+      new CompactHilbertCurve(OrdinalVector(2, 2, 2)) with RenderSource { def getCurveName = "Compact Hilbert" }.render(dotTarget("h(2,2,2)", 8))
+
       new ZCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Z" }.render(dotTarget("z(4,4)", 8))
       new CompactHilbertCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Compact Hilbert" }.render(dotTarget("h(4,4)", 8))
       new RowMajorCurve(OrdinalVector(4, 4)) with RenderSource { def getCurveName = "Row-major" }.render(dotTarget("r(4,4)", 8))

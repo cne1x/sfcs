@@ -209,6 +209,7 @@ class GraphvizRenderTarget extends RenderTarget {
 
   var numRows: Long = 0L
   var numCols: Long = 0L
+  var numSlice = 0
 
   val drawNumbers = true
   val drawArrows = true
@@ -241,8 +242,8 @@ class GraphvizRenderTarget extends RenderTarget {
       if (index >= 1L) pw.println(s"\t\tnode_${index - 1L} -> node_$index")
 
     val (x: Long, y: Long) = point.size match {
-      case 1 => (point(0) * ptsSpacing, 0L)
-      case 2 => (point(1) * ptsSpacing, point(0) * ptsSpacing)
+      case 1 => (numSlice * (numRows + 1) * ptsSpacing + point(0) * ptsSpacing, 0L)
+      case 2 => (numSlice * (numRows + 1) * ptsSpacing + point(0) * ptsSpacing, point(1) * ptsSpacing)
     }
 
     val shading = cellShadingRamp.map(ramp =>
@@ -253,6 +254,7 @@ class GraphvizRenderTarget extends RenderTarget {
 
   override def afterSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {
     pw.println(s"\t}")  // end subgraph
+    numSlice = numSlice + 1
   }
 
   override def afterRendering(sfc: RenderSource): Unit = {

@@ -61,6 +61,8 @@ abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends Sp
   // for any turn through (en|de)coding, no more than n bits can be valid
   val ValidBitsMask: Long = (1L << n) - 1L
 
+  val TotalValidBitsMask: Long = (1L << M) - 1L
+
   override def toString: String =
     s"CompactHilbert(${precisions.toString})"
 
@@ -68,8 +70,8 @@ abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends Sp
 
   // the mask is named "mu" in the papers
   def extractMask(i: Int, d: Long): Mask = {
-    var j = n - 1
     var accMask = Mask(0,0)
+    var j = n - 1
     while (j >= 0) {
       if (precisions((j + d) % n) > i)
         accMask = Mask(accMask.value << 1L | 1L, accMask.size + 1)
@@ -106,8 +108,8 @@ abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends Sp
   }
 
   def grayCodeRank(mu: Mask, w: Long): Long = {
-    var j = n - 1
     var r = 0L
+    var j = n - 1
     while (j >= 0) {
       r = bitAt(mu.value, j) match {
         case 0 => r
@@ -140,20 +142,26 @@ abstract class BaseCompactHilbertCurve(val precisions: OrdinalVector) extends Sp
     GrayCodeRankInverse(i, g)
   }
 
+  val notOne = ~1L & TotalValidBitsMask
+
   // in the paper, simply "e(i)"
-  def entry(i: Long): Long = {
+  def entry(i: Long): Long =
     if (i == 0) 0
-    else {
-      val j = ((i - 1) >>> 1) << 1
-      grayCode(j)
-    }
-  }
+    else grayCode((i - 1) & notOne)
+
+  // g(i) = k, such that gc(i) ^ gc(i+1) = 1<<k, 0 <= i <= 1<<n - 1
+  // g(i) = tsb(i)  // "trailing set bits in the binary representation of i"
+  // found some "tsb" ideas:
+  //   http://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets
+  def g(i: Long): Long =
+    if (i == 0 || i >= size) 0
+    else onBitsIn(i & (~i - 1L) & TotalValidBitsMask)
 
   // in the paper, simply "d(i)"
   def nextDim(i: Long): Long = i match {
     case 0                 => 0
-    case j if (j % 2) == 0 => inverseGrayCode(i - 1) % n
-    case _                 => inverseGrayCode(i) % n
+    case j if (j % 2) == 0 => g(i - 1) % n
+    case _                 => g(i) % n
   }
 
   def T(e: Long, d: Long)(b: Long): Long =
