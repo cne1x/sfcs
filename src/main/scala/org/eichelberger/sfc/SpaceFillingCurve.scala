@@ -331,6 +331,8 @@ object SpaceFillingCurve {
 
     def getRangesCoveringQuery(query: Query): Iterator[OrdinalPair]
 
+    def clearCache(): Unit = {}
+
     def isEverything(query: Query): Boolean = {
       var i = 0
       val qdr = query.rangesPerDim

@@ -280,6 +280,8 @@ case class CompactHilbertCurve(override val precisions: OrdinalVector) extends B
 
   private[this] val indexCache = collection.mutable.HashMap[OrdinalVector, OrdinalNumber]()
 
+  override def clearCache(): Unit = indexCache.clear()
+
   def getOrComputeIndex(point: OrdinalVector): OrdinalNumber =
     indexCache.getOrElseUpdate(point, index(point))
 

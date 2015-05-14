@@ -56,6 +56,8 @@ object StackingVariantsStudy extends App {
           if (curve.numLeafNodes == 4) rawCell
           else Cell(rawCell.dimensions.take(2) ++ rawCell.dimensions.takeRight(1))
 
+        curve.clearCache()
+
         val (ranges, msElapsed) = Timing.time(() => {
           val itr = curve.getRangesCoveringCell(cell)
           val list = itr.toList
@@ -202,9 +204,15 @@ object StackingVariantsStudy extends App {
     true
   }
 
-  def perCurveTestSuite(curve: ComposedCurve, output_rt: OutputDestination, output_qr: OutputDestination): Boolean =
-    goRoundTrip(curve, output_rt) &&
-    computeQueryRanges(curve, output_qr)
+  def perCurveTestSuite(curve: ComposedCurve, output_rt: OutputDestination, output_qr: OutputDestination): Boolean = {
+    curve.clearCache()
+    val a = goRoundTrip(curve, output_rt)
+
+    curve.clearCache()
+    val b = computeQueryRanges(curve, output_qr)
+
+    a && b
+  }
 
   def createRoundTripOutput: OutputDestination = {
     val columns = OutputMetadata(Seq(
