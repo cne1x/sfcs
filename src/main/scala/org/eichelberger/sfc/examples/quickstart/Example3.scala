@@ -9,7 +9,7 @@ object Example3 extends App {
   // create the dimensions that can manage user-space
   val x = DefaultDimensions.createLongitude(18)  // ~153 meters per cell (@ equator)
   val y = DefaultDimensions.createLatitude(17)   // ~153 meters per cell
-  val t = DefaultDimensions.createDateTime(
+  val t = DefaultDimensions.createNearDateTime(
       new DateTime(1970, 1, 1, 0, 0, 0, DateTimeZone.forID("UTC")),
       new DateTime(2010, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC")),
       20
@@ -42,7 +42,7 @@ object Example3 extends App {
 
   // identify the top-level index-ranges that cover a query
   val query = Cell(Seq(
-    DefaultDimensions.createDateTime(
+    DefaultDimensions.createNearDateTime(
       new DateTime(1998, 6, 15, 0, 0, 0, DateTimeZone.forID("UTC")),
       new DateTime(1998, 7, 15, 23, 59, 59, DateTimeZone.forID("UTC")),
       0

@@ -41,7 +41,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
     val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val rightChild: Composable  = combination.size match {
-      case 3 => DefaultDimensions.createDateTime(rightPrec)
+      case 3 => DefaultDimensions.createNearDateTime(rightPrec)
       case 2 => DefaultDimensions.createDimension[Double]("z", 0.0, 50000.0, rightPrec)
       case 1 => DefaultDimensions.createLatitude(rightPrec)
       case _ => throw new Exception("Invalid right child specification")
@@ -75,7 +75,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
     val rightChild: Composable = side match {
       case 0 => buildMixedCurve22(OrdinalVector(combination(1)), rightPrec, 2)
       case 1 => DefaultDimensions.createLatitude(rightPrec)
-      case 2 => DefaultDimensions.createDateTime(rightPrec)
+      case 2 => DefaultDimensions.createNearDateTime(rightPrec)
     }
 
     val rawCurve = rawNWayCurve(combination, leftPrec, rightPrec)
@@ -114,7 +114,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
       rawCurveTop,
       Seq(
         curveBottom,
-        DefaultDimensions.createDateTime(topDimPrecision)
+        DefaultDimensions.createNearDateTime(topDimPrecision)
       )
     )
   }
@@ -138,7 +138,7 @@ case class FactoryXYZT(precision: Int, plys: Int) {
         DefaultDimensions.createLongitude(xPrecision),
         DefaultDimensions.createLatitude(yPrecision),
         DefaultDimensions.createDimension[Double]("z", 0.0, 50000.0, zPrecision),
-        DefaultDimensions.createDateTime(tPrecision)
+        DefaultDimensions.createNearDateTime(tPrecision)
       )
     )
   }
@@ -164,7 +164,7 @@ case class FactoryXYT(precision: Int, plys: Int) {
     val (leftPrec, rightPrec) = decomposePrecision(combination, precision)
 
     val rightChild: Composable  = combination.size match {
-      case 2 => DefaultDimensions.createDateTime(rightPrec)
+      case 2 => DefaultDimensions.createNearDateTime(rightPrec)
       case 1 => DefaultDimensions.createLatitude(rightPrec)
       case _ => throw new Exception("Invalid right child specification")
     }
@@ -191,7 +191,7 @@ case class FactoryXYT(precision: Int, plys: Int) {
       Seq(
         DefaultDimensions.createLongitude(xPrecision),
         DefaultDimensions.createLatitude(yPrecision),
-        DefaultDimensions.createDateTime(tPrecision)
+        DefaultDimensions.createNearDateTime(tPrecision)
       )
     )
   }

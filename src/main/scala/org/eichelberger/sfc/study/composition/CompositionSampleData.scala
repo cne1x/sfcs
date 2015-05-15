@@ -22,7 +22,7 @@ object CompositionSampleData {
   // ensure that all of this discretizing-dimensions share the SAME precision
   val dimLong = DefaultDimensions.createLongitude(10L)
   val dimLat = DefaultDimensions.createLatitude(10L)
-  val dimDate = DefaultDimensions.createDateTime(10L)
+  val dimDate = DefaultDimensions.createNearDateTime(10L)
   val dimAlt = DefaultDimensions.createDimension("z", 0.0, 50000.0, 10L)
 
   def discretize[T](value: T, dim: Dimension[T]): (T, T) = {
@@ -95,7 +95,7 @@ object CompositionSampleData {
       val cellX = DefaultDimensions.createDimension("x", x0, x1, 0L)
       val cellY = DefaultDimensions.createDimension("y", y0, y1, 0L)
       val cellZ =  DefaultDimensions.createDimension("z", z0, z1, 0L)
-      val cellT = DefaultDimensions.createDateTime(t0, t1, 0L)
+      val cellT = DefaultDimensions.createNearDateTime(t0, t1, 0L)
       testLevel match {
         case Medium | Small =>
           // only report the combinations in which exactly one dimension is missing

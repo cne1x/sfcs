@@ -23,6 +23,7 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
   lazy val numLeafNodes: Int = children.map {
     case c: ComposedCurve => c.numLeafNodes
     case d: Dimension[_]  => 1
+    case d: SubDimension[_]  => 1
   }.sum
 
   override lazy val plys: Int = 1 + children.map(_.plys).max
@@ -37,6 +38,11 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
         val CoveringReturn(subQuery: Query, subCell: Cell) = c._getRangesCoveringCell(covret.cell)
         CoveringReturn(covret.query + subQuery, subCell)
       case d: Dimension[_]  =>
+        val dimRange = covret.cell.dimensions.head
+        val idxRange = OrdinalPair(d.indexAny(dimRange.min), d.indexAny(dimRange.max))
+        val subQuery = Query(Seq(OrdinalRanges(idxRange)))
+        CoveringReturn(covret.query + subQuery, Cell(covret.cell.dimensions.drop(1)))
+      case d: SubDimension[_]  =>
         val dimRange = covret.cell.dimensions.head
         val idxRange = OrdinalPair(d.indexAny(dimRange.min), d.indexAny(dimRange.max))
         val subQuery = Query(Seq(OrdinalRanges(idxRange)))

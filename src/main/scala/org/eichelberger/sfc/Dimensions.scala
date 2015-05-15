@@ -72,13 +72,19 @@ object Dimensions {
 
 import Dimensions._
 
+trait BareDimension[T] {
+  def index(value: T): OrdinalNumber
+  def indexAny(value: Any): OrdinalNumber
+  def inverseIndex(ordinal: OrdinalNumber): Dimension[T]
+}
+
 case class HalfDimension[T](extreme: T, isExtremeIncluded: Boolean)
 
 // for now, assume all dimensions are bounded
 // (reasonable, unless you're really going to use BigInt or
 // some other arbitrary-precision class as the basis)
 case class Dimension[T : DimensionLike](name: String, min: T, isMinIncluded: Boolean, max: T, isMaxIncluded: Boolean, precision: OrdinalNumber)(implicit classTag: ClassTag[T])
-  extends Composable {
+  extends Composable with BareDimension[T] {
 
   val basis = implicitly[DimensionLike[T]]
 
@@ -148,15 +154,44 @@ case class Dimension[T : DimensionLike](name: String, min: T, isMinIncluded: Boo
       "@" + precision.toString
 }
 
+// meant to represent a contiguous subset of bits from a
+// larger, parent dimension
+class SubDimension[T](val name: String, encoder: T => OrdinalNumber, parentPrecision: OrdinalNumber, bitsToSkip: OrdinalNumber, val precision: OrdinalNumber)
+  extends Composable with BareDimension[T] {
+
+  val numBitsRightToLose = parentPrecision - bitsToSkip - precision
+
+  val mask = (1L << precision) - 1L
+
+  def index(value: T): OrdinalNumber =
+    (encoder(value) >>> numBitsRightToLose) & mask
+
+  def indexAny(value: Any): OrdinalNumber = {
+    val coercedValue: T = value.asInstanceOf[T]
+    index(coercedValue)
+  }
+
+  def inverseIndex(ordinal: OrdinalNumber): Dimension[T] =
+    throw new UnsupportedOperationException("The 'inverseIndex' method is ill defined for a SubDimension.")
+}
+
 object DefaultDimensions {
   import Dimensions._
 
   val dimLongitude = Dimension[Double]("x", -180.0, isMinIncluded = true, +180.0, isMaxIncluded = true, 18L)
   val dimLatitude = Dimension[Double]("y", -90.0, isMinIncluded = true, +90.0, isMaxIncluded = true, 17L)
 
-  val MinDate = new DateTime(1900,  1,  1,  0,  0,  0, DateTimeZone.forID("UTC"))
-  val MaxDate = new DateTime(2100, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
-  val dimTime = Dimension("t", MinDate, isMinIncluded = true, MaxDate, isMaxIncluded = true, 15L)
+  val MinNearDate = new DateTime(1900,  1,  1,  0,  0,  0, DateTimeZone.forID("UTC"))
+  val MaxNearDate = new DateTime(2100, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
+  val dimNearTime = Dimension("t", MinNearDate, isMinIncluded = true, MaxNearDate, isMaxIncluded = true, 15L)
+
+  val MinYYYYDate = new DateTime(   0,  1,  1,  0,  0,  0, DateTimeZone.forID("UTC"))
+  val MaxYYYYDate = new DateTime(9999, 12, 31, 23, 59, 59, DateTimeZone.forID("UTC"))
+  val dimYYYYTime = Dimension("t", MinYYYYDate, isMinIncluded = true, MaxYYYYDate, isMaxIncluded = true, 20L)
+
+  val MinDate = new DateTime(Long.MinValue >> 2L, DateTimeZone.forID("UTC"))
+  val MaxDate = new DateTime(Long.MaxValue >> 2L, DateTimeZone.forID("UTC"))
+  val dimTime = Dimension("t", MinDate, isMinIncluded = true, MaxDate, isMaxIncluded = true, 60L)
 
   def createLongitude(atPrecision: OrdinalNumber): Dimension[Double] =
     dimLongitude.copy(precision = atPrecision)
@@ -167,8 +202,14 @@ object DefaultDimensions {
   def createDateTime(atPrecision: OrdinalNumber): Dimension[DateTime] =
     dimTime.copy(precision = atPrecision)
 
-  def createDateTime(minDate: DateTime, maxDate: DateTime, atPrecision: OrdinalNumber): Dimension[DateTime] =
-    dimTime.copy(min = minDate, max = maxDate, precision = atPrecision)
+  def createYYYYDateTime(atPrecision: OrdinalNumber): Dimension[DateTime] =
+    dimYYYYTime.copy(precision = atPrecision)
+
+  def createNearDateTime(atPrecision: OrdinalNumber): Dimension[DateTime] =
+    dimNearTime.copy(precision = atPrecision)
+
+  def createNearDateTime(minDate: DateTime, maxDate: DateTime, atPrecision: OrdinalNumber): Dimension[DateTime] =
+    dimNearTime.copy(min = minDate, max = maxDate, precision = atPrecision)
 
   def createDimension[T](name: String, minimum: T, maximum: T, precision: OrdinalNumber)(implicit dimLike: DimensionLike[T], ctag: ClassTag[T]): Dimension[T] =
     Dimension[T](name, minimum, isMinIncluded = true, maximum, isMaxIncluded = true, precision)
