@@ -6,6 +6,7 @@ import java.io.{PrintStream, PrintWriter}
 import org.eichelberger.sfc.SpaceFillingCurve._
 
 trait RenderTarget {
+  def qw(s: String) = "\"" + s + "\""
   def beforeRendering(sfc: RenderSource): Unit = {}
   def beforeSlice(sfc: RenderSource, slice: OrdinalVector): Unit = {}
   def beforeRow(sfc: RenderSource, row: OrdinalNumber): Unit = {}
@@ -215,8 +216,6 @@ class GraphvizRenderTarget extends RenderTarget {
   val drawArrows = true
   val cellShadingRamp: Option[ShadeRamp] = None
 
-  def qw(s: String) = "\"" + s + "\""
-
   override def beforeRendering(sfc: RenderSource): Unit = {
     pw.println("// to render correctly:\n//  neato -n input.dot -Tpng -o output.png")
     pw.println("digraph G {")
@@ -272,8 +271,6 @@ class PovrayRenderTarget extends RenderTarget {
 
   var povCurveName: String = "UNKNOWN"
 
-  def qw(s: String) = "\"" + s + "\""
-
   override def beforeRendering(sfc: RenderSource): Unit = {
     povCurveName = sfc.getCurveName.replaceAll("[^a-zA-Z0-9]", "_").toUpperCase
 
@@ -292,5 +289,45 @@ class PovrayRenderTarget extends RenderTarget {
   override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
     val items = (0 to 2).map { i => s"#declare curve_cells[$index][$i] = ${point(i)};" }
     pw.println(items.mkString("  "))
+  }
+}
+
+
+// this is one of the simplest output formats, being a
+// plain CSV that dumps the index and the coordinates
+class CSVRenderTarget extends RenderTarget {
+  val pw: PrintStream = System.out
+
+  override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
+    val items = index +: point.x
+    pw.println(items.mkString(","))
+  }
+}
+
+
+// brute-force-and-ignorance JSON output
+class JSONRenderTarget extends RenderTarget {
+  val pw: PrintStream = System.out
+
+  override def beforeRendering(sfc: RenderSource): Unit = {
+    val jsCurveName = sfc.getCurveName.replaceAll("[^a-zA-Z0-9]", "_").toUpperCase
+    pw.println(s"var sfc__$jsCurveName = {")
+    pw.println(s"\tname: ${qw(sfc.getCurveName)},")
+    pw.println(s"\tnum_dimensions:  ${sfc.indexBounds.size},")
+    pw.println(s"\tbounds:  [")
+    pw.println(s"\t\t${sfc.indexBounds.map(pair => s"{ min: ${pair.min}, max: ${pair.max} }").mkString(",\n\t\t")}")
+    pw.println(s"\t],")
+    pw.println(s"\tnodes:  [")
+  }
+
+  override def renderCell(sfc: RenderSource, index: OrdinalNumber, point: OrdinalVector): Unit = {
+    pw.println(s"\t\t{")
+    pw.println(s"\t\t\tindex:  $index,")
+    pw.println(s"\t\t\tpoint:  [${point.x.mkString(", ")}]")
+    pw.println(s"\t\t},")
+  }
+
+  override def afterRendering(sfc: RenderSource): Unit = {
+    pw.println("\t]\n};")
   }
 }

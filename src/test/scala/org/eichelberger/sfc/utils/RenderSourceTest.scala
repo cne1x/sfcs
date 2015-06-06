@@ -126,5 +126,57 @@ class RenderSourceTest extends Specification with LazyLogging {
 
       1 must equalTo(1)
     }
+
+    "be able to render small curves to CSV" >> {
+      def csvTarget(fileName: String) = new CSVRenderTarget() {
+        override val pw: PrintStream =
+          new java.io.PrintStream(new BufferedOutputStream(new FileOutputStream(s"/tmp/$fileName.csv")))
+        override def afterRendering(sfc: RenderSource): Unit = {
+          super.afterRendering(sfc)
+          pw.close()
+        }
+      }
+
+      // square cubes
+      new RowMajorCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "R444" }.render(csvTarget("r(4,4,4)"))
+      new ZCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "Z444" }.render(csvTarget("z(4,4,4)"))
+      new CompactHilbertCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "H444" }.render(csvTarget("h(4,4,4)"))
+
+      // oblong cubes
+      new RowMajorCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "R445" }.render(csvTarget("r(4,4,5)"))
+      new ZCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "Z445" }.render(csvTarget("z(4,4,5)"))
+      new CompactHilbertCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "H445" }.render(csvTarget("h(4,4,5)"))
+
+      1 must equalTo(1)
+    }
+  }
+
+  "be able to render small curves to JSON" >> {
+    def jsonTarget(fileName: String) = new JSONRenderTarget() {
+      override val pw: PrintStream =
+        new java.io.PrintStream(new BufferedOutputStream(new FileOutputStream(s"/tmp/$fileName.js")))
+      override def afterRendering(sfc: RenderSource): Unit = {
+        super.afterRendering(sfc)
+        pw.close()
+      }
+    }
+
+    // square cubes
+    new RowMajorCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "R222" }.render(jsonTarget("r(2,2,2)"))
+    new ZCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "Z222" }.render(jsonTarget("z(2,2,2)"))
+    new CompactHilbertCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "H222" }.render(jsonTarget("h(2,2,2)"))
+    new RowMajorCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "R444" }.render(jsonTarget("r(4,4,4)"))
+    new ZCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "Z444" }.render(jsonTarget("z(4,4,4)"))
+    new CompactHilbertCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "H444" }.render(jsonTarget("h(4,4,4)"))
+
+    // oblong cubes
+    new RowMajorCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "R224" }.render(jsonTarget("r(2,2,4)"))
+    new ZCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "Z224" }.render(jsonTarget("z(2,2,4)"))
+    new CompactHilbertCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "H224" }.render(jsonTarget("h(2,2,4)"))
+    new RowMajorCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "R445" }.render(jsonTarget("r(4,4,5)"))
+    new ZCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "Z445" }.render(jsonTarget("z(4,4,5)"))
+    new CompactHilbertCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "H445" }.render(jsonTarget("h(4,4,5)"))
+
+    1 must equalTo(1)
   }
 }
