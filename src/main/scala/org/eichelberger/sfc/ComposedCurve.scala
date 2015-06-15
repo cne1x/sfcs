@@ -22,6 +22,7 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
 
   lazy val numLeafNodes: Int = children.map {
     case c: ComposedCurve => c.numLeafNodes
+    case c: SpaceFillingCurve => c.n
     case d: Dimension[_]  => 1
     case d: SubDimension[_]  => 1
   }.sum
@@ -30,6 +31,14 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
 
   lazy val name: String = delegate.name +
     children.map(_.name).mkString("(", ",", ")")
+
+  override def netPrecisions: OrdinalVector = new OrdinalVector(
+    children.zip(precisions.x).flatMap {
+      case (c: ComposedCurve, _) => c.netPrecisions.x
+      case (c: SpaceFillingCurve, _) => c.precisions.x
+      case (d: Dimension[_], prec: OrdinalNumber) => Seq(prec)
+    }:_*
+  )
 
   private def _getRangesCoveringCell(cell: Cell): CoveringReturn = {
     // dimension ranges must be picked off in-order
@@ -69,11 +78,55 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
     throw new UnsupportedOperationException(
       "This routine is not sensible for a composed curve.  Try getRangesCoveringCell(Cell) instead.")
 
-  def index(point: OrdinalVector): OrdinalNumber =
-    delegate.index(point)
+//  def index(point: OrdinalVector): OrdinalNumber =
+//    delegate.index(point)
+//
+//  def inverseIndex(index: OrdinalNumber): OrdinalVector =
+//    delegate.inverseIndex(index)
 
-  def inverseIndex(index: OrdinalNumber): OrdinalVector =
-    delegate.inverseIndex(index)
+  def index(point: OrdinalVector): OrdinalNumber = {
+    require(point.size == numLeafNodes, s"Number of point-dimensions (${point.size}) must equal number of leaf-nodes ($numLeafNodes)")
+
+    val values = point.x
+
+    // pick off these ordinal values in turn
+    val (ordinalVector: OrdinalVector, _) = children.foldLeft((OrdinalVector(), values))((acc, child) => acc match {
+      case (ordsSoFar, valuesLeft) =>
+        val (ord: OrdinalNumber, numUsed: Int) = child match {
+          case c: ComposedCurve =>
+            val thisChildsValues = valuesLeft.take(c.numLeafNodes)
+            (c.index(new OrdinalVector(thisChildsValues:_*)), c.numLeafNodes)
+          case c: SpaceFillingCurve =>
+            val thisChildsValues = valuesLeft.take(c.n)
+            (c.index(new OrdinalVector(thisChildsValues:_*)), c.n)
+          case d: Dimension[_]  =>  // identity map
+            val thisChildsValues = valuesLeft.take(1)
+            (thisChildsValues.head, 1)
+          case _ => throw new Exception("Unrecognized child type")
+        }
+        (ordsSoFar ++ ord, valuesLeft.drop(numUsed))
+    })
+
+    // ask the delegate to do the final join
+    delegate.index(ordinalVector)
+  }
+
+  def inverseIndex(index: OrdinalNumber): OrdinalVector = {
+    // decompose this single index into coordinates
+    val ordinalsVector = delegate.inverseIndex(index)
+
+    // farm out these coordinates among the children
+    val point: Seq[OrdinalNumber] = children.zip(ordinalsVector.toSeq).flatMap {
+      case (child, ordinal) =>
+        child match {
+          case c: ComposedCurve => c.inverseIndex(ordinal).x
+          case c: SpaceFillingCurve => c.inverseIndex(ordinal).x
+          case d: Dimension[_]  => Seq(ordinal)  // identity map
+        }
+    }
+
+    new OrdinalVector(point:_*)
+  }
 
   def pointToIndex(values: Seq[Any]): OrdinalNumber = {
     require(values.size == numLeafNodes, s"Number of values (${values.size}) must equal number of leaf-nodes ($numLeafNodes)")
