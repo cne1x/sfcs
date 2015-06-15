@@ -161,7 +161,7 @@ class RenderSourceTest extends Specification with LazyLogging {
       }
     }
 
-    // square cubes
+    // square, 1-ply curves
     new RowMajorCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "R222" }.render(jsonTarget("r(2,2,2)"))
     new ZCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "Z222" }.render(jsonTarget("z(2,2,2)"))
     new CompactHilbertCurve(OrdinalVector(2, 2, 2)) with RenderSource { override val useSlices = false; def getCurveName = "H222" }.render(jsonTarget("h(2,2,2)"))
@@ -169,13 +169,57 @@ class RenderSourceTest extends Specification with LazyLogging {
     new ZCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "Z444" }.render(jsonTarget("z(4,4,4)"))
     new CompactHilbertCurve(OrdinalVector(4, 4, 4)) with RenderSource { override val useSlices = false; def getCurveName = "H444" }.render(jsonTarget("h(4,4,4)"))
 
-    // oblong cubes
+    // oblong, 1-ply curves
     new RowMajorCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "R224" }.render(jsonTarget("r(2,2,4)"))
     new ZCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "Z224" }.render(jsonTarget("z(2,2,4)"))
     new CompactHilbertCurve(OrdinalVector(2, 2, 4)) with RenderSource { override val useSlices = false; def getCurveName = "H224" }.render(jsonTarget("h(2,2,4)"))
     new RowMajorCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "R445" }.render(jsonTarget("r(4,4,5)"))
     new ZCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "Z445" }.render(jsonTarget("z(4,4,5)"))
     new CompactHilbertCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "H445" }.render(jsonTarget("h(4,4,5)"))
+
+    // oblong, 2-ply (composed) curves
+    new ComposedCurve(
+      new RowMajorCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new ZCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "R2Z22" }.render(jsonTarget("r(2,z(2,2))"))
+    new ComposedCurve(
+      new RowMajorCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new CompactHilbertCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "R2H22" }.render(jsonTarget("r(2,h(2,2))"))
+    new ComposedCurve(
+      new ZCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new RowMajorCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "Z2R22" }.render(jsonTarget("z(2,r(2,2))"))
+    new ComposedCurve(
+      new ZCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new CompactHilbertCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "Z2H22" }.render(jsonTarget("z(2,h(2,2))"))
+    new ComposedCurve(
+      new CompactHilbertCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new RowMajorCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "H2R22" }.render(jsonTarget("h(2,r(2,2))"))
+    new ComposedCurve(
+      new CompactHilbertCurve(OrdinalVector(2, 4)),
+      Seq(
+        DefaultDimensions.createIdentityDimension(2),
+        new ZCurve(OrdinalVector(2, 2))
+      )
+    ) with RenderSource { override val useSlices = false; def getCurveName = "H2Z22" }.render(jsonTarget("h(2,z(2,2))"))
 
     1 must equalTo(1)
   }

@@ -213,4 +213,21 @@ object DefaultDimensions {
 
   def createDimension[T](name: String, minimum: T, maximum: T, precision: OrdinalNumber)(implicit dimLike: DimensionLike[T], ctag: ClassTag[T]): Dimension[T] =
     Dimension[T](name, minimum, isMinIncluded = true, maximum, isMaxIncluded = true, precision)
+
+  class IdentityDimension(name: String, precision: OrdinalNumber)
+    extends Dimension[Long](name, 0L, isMinIncluded=true, (1L << precision) - 1L, isMaxIncluded=true, precision) {
+
+    override def index(value: OrdinalNumber): OrdinalNumber = value
+
+    override def indexAny(value: Any): OrdinalNumber = value.asInstanceOf[OrdinalNumber]
+
+    override def inverseIndex(ordinal: OrdinalNumber): Dimension[Long] =
+      Dimension[Long]("dummy", ordinal, isMinIncluded=true, ordinal, isMaxIncluded=true, 0)
+  }
+
+  def createIdentityDimension(name: String, precision: OrdinalNumber): Dimension[Long] =
+    new IdentityDimension(name, precision)
+
+  def createIdentityDimension(precision: OrdinalNumber): Dimension[Long] =
+    createIdentityDimension(s"Identity_$precision", precision)
 }

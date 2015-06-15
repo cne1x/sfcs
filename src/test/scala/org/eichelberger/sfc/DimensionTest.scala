@@ -19,6 +19,28 @@ class DimensionTest extends Specification with LazyLogging {
     }
   }
 
+  "identity dimensions" should {
+    "work at both ends" >> {
+      def last(p: OrdinalNumber): OrdinalNumber = (1L << p) - 1L
+
+      val i1 = DefaultDimensions.createIdentityDimension(1)
+      i1.index(0) must equalTo(0)
+      i1.index(1) must equalTo(1)
+
+      val i10 = DefaultDimensions.createIdentityDimension(10)
+      i10.index(0) must equalTo(0)
+      i10.index(1023) must equalTo(1023)
+
+      val i20 = DefaultDimensions.createIdentityDimension(20)
+      i20.index(0) must equalTo(0)
+      i20.index(last(20)) must equalTo(last(20))
+
+      val i60 = DefaultDimensions.createIdentityDimension(60)
+      i60.index(0) must equalTo(0)
+      i60.index(last(60)) must equalTo(last(60))
+    }
+  }
+
   "sub dimensions" should {
     "work for location" >> {
       val gh = new Geohash(35)
