@@ -33,7 +33,7 @@ class ComposedCurveTest extends Specification with LazyLogging {
         )
       )
 
-      curve.netPrecisions must equalTo(OrdinalVector(6, 3, 4, 5, 7))
+      curve.precisions must equalTo(OrdinalVector(6, 3, 4, 5, 7))
     }
 
     "work correctly on a partial curve" >> {
@@ -46,7 +46,7 @@ class ComposedCurveTest extends Specification with LazyLogging {
         )
       )
 
-      curve.netPrecisions must equalTo(OrdinalVector(6, 7, 5, 7))
+      curve.precisions must equalTo(OrdinalVector(6, 7, 5, 7))
     }
   }
 }

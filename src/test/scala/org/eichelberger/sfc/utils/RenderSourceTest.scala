@@ -5,6 +5,7 @@ import java.io.{BufferedOutputStream, FileOutputStream, PrintStream}
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, _}
 import org.eichelberger.sfc._
+import org.eichelberger.sfc.examples.composition.contrast.BaseCurves
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -177,49 +178,37 @@ class RenderSourceTest extends Specification with LazyLogging {
     new ZCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "Z445" }.render(jsonTarget("z(4,4,5)"))
     new CompactHilbertCurve(OrdinalVector(4, 4, 5)) with RenderSource { override val useSlices = false; def getCurveName = "H445" }.render(jsonTarget("h(4,4,5)"))
 
-    // oblong, 2-ply (composed) curves
-    new ComposedCurve(
-      new RowMajorCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new ZCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "R2Z22" }.render(jsonTarget("r(2,z(2,2))"))
-    new ComposedCurve(
-      new RowMajorCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new CompactHilbertCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "R2H22" }.render(jsonTarget("r(2,h(2,2))"))
-    new ComposedCurve(
-      new ZCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new RowMajorCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "Z2R22" }.render(jsonTarget("z(2,r(2,2))"))
-    new ComposedCurve(
-      new ZCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new CompactHilbertCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "Z2H22" }.render(jsonTarget("z(2,h(2,2))"))
-    new ComposedCurve(
-      new CompactHilbertCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new RowMajorCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "H2R22" }.render(jsonTarget("h(2,r(2,2))"))
-    new ComposedCurve(
-      new CompactHilbertCurve(OrdinalVector(2, 4)),
-      Seq(
-        DefaultDimensions.createIdentityDimension(2),
-        new ZCurve(OrdinalVector(2, 2))
-      )
-    ) with RenderSource { override val useSlices = false; def getCurveName = "H2Z22" }.render(jsonTarget("h(2,z(2,2))"))
+    // square, 2-ply (composed) curves
+    import BaseCurves._
+    def getCurveType(curveType: Int, precisions: OrdinalVector): SpaceFillingCurve = curveType match {
+      case RowMajor => RowMajorCurve(precisions)
+      case ZOrder   => ZCurve(precisions)
+      case Hilbert  => CompactHilbertCurve(precisions)
+    }
+    def getCurveLetter(curveType: Int): String = curveType match {
+      case RowMajor => "R"
+      case ZOrder   => "Z"
+      case Hilbert  => "H"
+    }
+    def mk3curve(topCurve: Int, topLiteralFirst: Boolean, bottomCurve: Int): Unit = {
+      val (curveName, children, delegate) = if (topLiteralFirst) (
+        getCurveLetter(topCurve) + "2" + getCurveLetter(bottomCurve) + "22",
+        Seq(DefaultDimensions.createIdentityDimension(2), getCurveType(bottomCurve, OrdinalVector(2,2))),
+        getCurveType(topCurve, OrdinalVector(2, 4))
+        )
+      else (
+        getCurveLetter(topCurve) + getCurveLetter(bottomCurve) + "222",
+        Seq(getCurveType(bottomCurve, OrdinalVector(2,2)), DefaultDimensions.createIdentityDimension(2)),
+        getCurveType(topCurve, OrdinalVector(4, 2))
+        )
+      new ComposedCurve(delegate, children) with RenderSource {
+        override val useSlices = false
+        def getCurveName = curveName
+      }.render(jsonTarget(curveName))
+    }
+    for (top <- Seq(RowMajor, ZOrder, Hilbert); first <- Seq(true, false); bottom <- Seq(RowMajor, ZOrder, Hilbert)) {
+      mk3curve(top, topLiteralFirst = first, bottom)
+    }
 
     1 must equalTo(1)
   }

@@ -23,19 +23,19 @@ trait RenderSource {
 
   def getCurveName: String
 
-  def numCells: Long = netSize
+  def numCells: Long = size
 
   def useSlices: Boolean = true
 
   def indexBounds: Seq[OrdinalPair] =
-    netPrecisions.toSeq.map(p => OrdinalPair(0L, (1L << p) - 1L))
+    precisions.toSeq.map(p => OrdinalPair(0L, (1L << p) - 1L))
 
   def nonTerminalIndexBounds: Seq[OrdinalPair] =
-    if (netPrecisions.size > 2) indexBounds.dropRight(2)
+    if (precisions.size > 2) indexBounds.dropRight(2)
     else Seq(OrdinalPair(0, 0))
 
   def terminalIndexBounds: Seq[OrdinalPair] =
-    indexBounds.takeRight(Math.min(2, netPrecisions.size))
+    indexBounds.takeRight(Math.min(2, precisions.size))
 
   def renderSlices(target: RenderTarget) = {
     // loop over all dimensions higher than 2

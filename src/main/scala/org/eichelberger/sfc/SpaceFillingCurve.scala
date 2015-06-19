@@ -307,8 +307,6 @@ object SpaceFillingCurve {
     // the number of bits consumed by each of the constituent dimensions
     def precisions: OrdinalVector
 
-    def netPrecisions: OrdinalVector = precisions
-
     // the number of dimensions
     override val n = precisions.size
 
@@ -320,8 +318,6 @@ object SpaceFillingCurve {
 
     // the total number of indexible cells in the space
     val size = 1L << M.toLong
-
-    def netSize = netPrecisions.x.map(p => 1L << p).product
 
     // the maximum allowable point-index value in each dimension
     val sizes = precisions.cardinalities

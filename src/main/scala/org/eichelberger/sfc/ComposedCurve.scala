@@ -18,7 +18,13 @@ import ComposedCurve._
 class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composable])
   extends SpaceFillingCurve with Lexicographic {
 
-  lazy val precisions: OrdinalVector = delegate.precisions
+  lazy val precisions: OrdinalVector = new OrdinalVector(
+    children.zip(delegate.precisions.x).flatMap {
+      case (c: ComposedCurve, _) => c.precisions.x
+      case (c: SpaceFillingCurve, _) => c.precisions.x
+      case (d: Dimension[_], prec: OrdinalNumber) => Seq(prec)
+    }:_*
+  )
 
   lazy val numLeafNodes: Int = children.map {
     case c: ComposedCurve => c.numLeafNodes
@@ -31,14 +37,6 @@ class ComposedCurve(val delegate: SpaceFillingCurve, val children: Seq[Composabl
 
   lazy val name: String = delegate.name +
     children.map(_.name).mkString("(", ",", ")")
-
-  override def netPrecisions: OrdinalVector = new OrdinalVector(
-    children.zip(precisions.x).flatMap {
-      case (c: ComposedCurve, _) => c.netPrecisions.x
-      case (c: SpaceFillingCurve, _) => c.precisions.x
-      case (d: Dimension[_], prec: OrdinalNumber) => Seq(prec)
-    }:_*
-  )
 
   private def _getRangesCoveringCell(cell: Cell): CoveringReturn = {
     // dimension ranges must be picked off in-order
