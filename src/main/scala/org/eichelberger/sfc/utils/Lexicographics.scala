@@ -27,7 +27,7 @@ object Lexicographics {
     )
   
   implicit def string2seq(s: String): Alphabet = 
-    Alphabet(s.split("").tail.toSeq)
+    Alphabet(s.split("").toSeq)
   
   trait Lexicographic {
     // the total bits precision summed across all dimensions

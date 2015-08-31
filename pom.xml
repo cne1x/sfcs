@@ -12,7 +12,8 @@
 
     <properties>
         <scala.series>2.11</scala.series>
-        <scala.version>2.11.5</scala.version>
+        <scala.version>2.11.6</scala.version>
+        <scala.parser.version>1.0.4</scala.parser.version>
 
         <slf4j.version>1.7.10</slf4j.version>
         <scalalogging.version>2.1.2</scalalogging.version>
@@ -29,6 +30,11 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-parser-combinators_2.11</artifactId>
+            <version>${scala.parser.version}</version>
         </dependency>
         <dependency>
             <groupId>org.scala-lang</groupId>
