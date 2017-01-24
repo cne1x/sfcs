@@ -12,14 +12,14 @@
 
     <properties>
         <scala.series>2.11</scala.series>
-        <scala.version>2.11.6</scala.version>
+        <scala.version>2.11.8</scala.version>
         <scala.parser.version>1.0.4</scala.parser.version>
 
         <slf4j.version>1.7.10</slf4j.version>
         <scalalogging.version>2.1.2</scalalogging.version>
         <log4j.version>1.2.17</log4j.version>
 
-        <maven.test.jvmargs>-Xms4g -Xmx8g -XX:MaxPermSize=1024m -XX:-UseGCOverheadLimit</maven.test.jvmargs>
+        <maven.test.jvmargs>-Xms4g -Xmx8g -XX:-UseGCOverheadLimit</maven.test.jvmargs>
         <fork.mode>once</fork.mode>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -128,7 +128,6 @@
                     <jvmArgs>
                         <jvmArg>-Xms1024m</jvmArg>
                         <jvmArg>-Xmx4096m</jvmArg>
-                        <jvmArg>-XX:MaxPermSize=1024m</jvmArg>
                     </jvmArgs>
                     <args>
                         <arg>-nowarn</arg>
