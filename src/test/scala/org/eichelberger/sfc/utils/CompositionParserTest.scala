@@ -2,8 +2,7 @@ package org.eichelberger.sfc.utils
 
 import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.eichelberger.sfc.DefaultDimensions.IdentityDimension
-import org.eichelberger.sfc.SpaceFillingCurve.SpaceFillingCurve
-import org.eichelberger.sfc.SpaceFillingCurve.SpaceFillingCurve
+import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve}
 import org.eichelberger.sfc._
 import org.joda.time.DateTime
 import org.junit.runner.RunWith
@@ -115,6 +114,26 @@ class CompositionParserTest extends Specification {
       val cXCustom: Dimension[Double] = cACustom.children.head.asInstanceOf[Dimension[Double]]
       cXCustom.min must_== dxMin.toDouble
       cXCustom.max must_== dxMax.toDouble
+
+      1 must_== 1
+    }
+
+    "parse with explicit secondary indexes (U, V, W) set correctly" >> {
+      // ... when using implicit per-dimension bounds
+      val cImplicit = CompositionParser.buildWholeNumberCurve("Z(u(10), v(10))")
+      cImplicit.cardinalities must_== List(1024, 1024)
+      cImplicit.children.head.asInstanceOf[Dimension[Long]].min must_== 0
+      cImplicit.children.head.asInstanceOf[Dimension[Long]].max must_== 1023
+      cImplicit.children.last.asInstanceOf[Dimension[Long]].min must_== 0
+      cImplicit.children.last.asInstanceOf[Dimension[Long]].max must_== 1023
+
+      // ... when using explicit per-dimension bounds
+      val cExplicit = CompositionParser.buildWholeNumberCurve("Z(u(10, 4, 12), v(10, 1, 18))")
+      cExplicit.cardinalities must_== List(1024, 1024)
+      cExplicit.children.head.asInstanceOf[Dimension[Long]].min must_== 4
+      cExplicit.children.head.asInstanceOf[Dimension[Long]].max must_== 12
+      cExplicit.children.last.asInstanceOf[Dimension[Long]].min must_== 1
+      cExplicit.children.last.asInstanceOf[Dimension[Long]].max must_== 18
 
       1 must_== 1
     }

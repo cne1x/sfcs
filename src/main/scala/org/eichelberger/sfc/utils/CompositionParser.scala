@@ -57,7 +57,16 @@ object CompositionParser extends RegexParsers {
       Dimension("t", minDate, isMinIncluded = true, maxDate, isMaxIncluded = true, p.toLong)
   }
 
-  def dimension: Parser[Dimension[_]] = longitude | latitude | dateTime
+  def longDimName: Parser[String] = "u".r | "v".r | "w".r
+
+  def longDim: Parser[Dimension[Long]] = longDimName ~ LPAREN ~ intLiteral ~ opt(COMMA ~ doubleLiteral ~ COMMA ~ doubleLiteral) <~ RPAREN ^^ {
+    case name ~ _ ~ p ~ None =>
+      Dimension[Long](name, 0L, isMinIncluded=true, (1L << p.toLong) - 1L, isMaxIncluded=true, p.toLong)
+    case name ~ _ ~ p ~ Some(_ ~ min ~ _ ~ max) =>
+      Dimension[Long](name, min.toLong, isMinIncluded=true, max.toLong, isMaxIncluded=true, p.toLong)
+  }
+
+  def dimension: Parser[Dimension[_]] = longitude | latitude | dateTime | longDim
 
   def curveName: Parser[String] = R_CURVE_NAME | Z_CURVE_NAME | H_CURVE_NAME ^^ { _.toString }
 
