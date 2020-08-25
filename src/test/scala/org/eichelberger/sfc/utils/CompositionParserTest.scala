@@ -6,6 +6,7 @@ import org.eichelberger.sfc.SpaceFillingCurve.{OrdinalVector, SpaceFillingCurve}
 import org.eichelberger.sfc._
 import org.joda.time.DateTime
 import org.junit.runner.RunWith
+import org.specs2.matcher.Matchers.beNull
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
@@ -115,6 +116,12 @@ class CompositionParserTest extends Specification {
       cXCustom.min must_== dxMin.toDouble
       cXCustom.max must_== dxMax.toDouble
 
+      1 must_== 1
+    }
+
+    "parse with all variables with explicit bounds" >> {
+      val curve = CompositionParser.buildWholeNumberCurve("Z(x(2,-180.0,180.0),y(2,-90.0,90.0),t(2,1900-01-01T00:00:00.000Z,2029-12-31T23:59:59.999Z))")
+      curve must not beNull;
       1 must_== 1
     }
 
